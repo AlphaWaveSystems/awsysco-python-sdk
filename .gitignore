@@ -1,0 +1,54 @@
+# === SECRETS — NEVER COMMIT THESE ===
+.env
+.env.*
+.env.local
+.env.test
+.env.staging
+.env.production
+.env.development
+*.env
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.tox/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === EDITOR ===
+.vscode/
+.idea/
+*.swp
+
+# === TEST ARTIFACTS ===
+test-results/
+# reports/*.html and reports/*.json are ignored; reports/*.md (implementation docs) are tracked
+reports/*.html
+reports/*.json
+reports/*.log
+*.html
