@@ -51,4 +51,10 @@ class BulkResource:
             payload.append(entry)
 
         data = self._http.post("/api/v1/bulk", json={"urls": payload})
+        # Normalise: API sometimes wraps counts under a "summary" key
+        if isinstance(data, dict) and "summary" in data and "created" not in data:
+            summary = data["summary"]
+            data = dict(data)
+            data.setdefault("created", summary.get("created"))
+            data.setdefault("failed", summary.get("failed"))
         return BulkResult.model_validate(data)

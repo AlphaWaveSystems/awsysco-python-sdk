@@ -1,8 +1,8 @@
-"""Internal HTTP client wrapper with retry logic and error mapping."""
+"""Async HTTP client wrapper with retry logic and error mapping."""
 
 from __future__ import annotations
 
-import time
+import asyncio
 from typing import Any, Dict, Optional
 
 import httpx
@@ -31,8 +31,6 @@ def _parse_error(response: httpx.Response) -> AwsysError:
     try:
         data = response.json()
         raw = data
-        # API returns { error: true, message: "...", code: "..." }
-        # The "error" field is a boolean, the human-readable text is in "message"
         msg_field = data.get("message")
         if msg_field and isinstance(msg_field, str):
             message = msg_field
@@ -69,12 +67,12 @@ def _parse_error(response: httpx.Response) -> AwsysError:
     return AwsysError(message, **kwargs)
 
 
-class HttpClient:
-    """Thin wrapper around httpx.Client with auth, retries, and error mapping."""
+class AsyncHttpClient:
+    """Async wrapper around httpx.AsyncClient with auth, retries, and error mapping."""
 
     def __init__(self, api_key: str, base_url: str, timeout: float = 30.0) -> None:
         self._base_url = base_url.rstrip("/")
-        self._client = httpx.Client(
+        self._client = httpx.AsyncClient(
             base_url=self._base_url,
             headers={
                 "Authorization": f"Bearer {api_key}",
@@ -85,7 +83,7 @@ class HttpClient:
             timeout=timeout,
         )
 
-    def _request(
+    async def _request(
         self,
         method: str,
         path: str,
@@ -93,16 +91,16 @@ class HttpClient:
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Any] = None,
     ) -> Any:
-        """Execute an HTTP request with 429-retry logic."""
+        """Execute an async HTTP request with 429-retry logic."""
         attempt = 0
         while True:
-            response = self._client.request(method, path, params=params, json=json)
+            response = await self._client.request(method, path, params=params, json=json)
 
             if response.status_code == 429 and attempt < _MAX_RETRIES:
                 exc = _parse_error(response)
                 assert isinstance(exc, AwsysRateLimitError)
                 delay = exc.retry_after or (_RETRY_BASE_DELAY * (2 ** attempt))
-                time.sleep(delay)
+                await asyncio.sleep(delay)
                 attempt += 1
                 continue
 
@@ -115,20 +113,20 @@ class HttpClient:
 
             return response.json()
 
-    def get(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> Any:
-        return self._request("GET", path, params=params)
+    async def get(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> Any:
+        return await self._request("GET", path, params=params)
 
-    def get_text(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> str:
+    async def get_text(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> str:
         """Like get() but returns response.text instead of response.json()."""
         attempt = 0
         while True:
-            response = self._client.request("GET", path, params=params)
+            response = await self._client.request("GET", path, params=params)
 
             if response.status_code == 429 and attempt < _MAX_RETRIES:
                 exc = _parse_error(response)
                 assert isinstance(exc, AwsysRateLimitError)
                 delay = exc.retry_after or (_RETRY_BASE_DELAY * (2 ** attempt))
-                time.sleep(delay)
+                await asyncio.sleep(delay)
                 attempt += 1
                 continue
 
@@ -137,23 +135,24 @@ class HttpClient:
 
             return response.text
 
-    def post(self, path: str, *, json: Optional[Any] = None) -> Any:
-        return self._request("POST", path, json=json)
+    async def post(self, path: str, *, json: Optional[Any] = None) -> Any:
+        return await self._request("POST", path, json=json)
 
-    def patch(self, path: str, *, json: Optional[Any] = None) -> Any:
-        return self._request("PATCH", path, json=json)
+    async def patch(self, path: str, *, json: Optional[Any] = None) -> Any:
+        return await self._request("PATCH", path, json=json)
 
-    def put(self, path: str, *, json: Optional[Any] = None) -> Any:
-        return self._request("PUT", path, json=json)
+    async def put(self, path: str, *, json: Optional[Any] = None) -> Any:
+        return await self._request("PUT", path, json=json)
 
-    def delete(self, path: str) -> Any:
-        return self._request("DELETE", path)
+    async def delete(self, path: str) -> Any:
+        return await self._request("DELETE", path)
 
-    def close(self) -> None:
-        self._client.close()
+    async def aclose(self) -> None:
+        """Close the underlying async HTTP connection pool."""
+        await self._client.aclose()
 
-    def __enter__(self) -> "HttpClient":
+    async def __aenter__(self) -> "AsyncHttpClient":
         return self
 
-    def __exit__(self, *args: Any) -> None:
-        self.close()
+    async def __aexit__(self, *args: Any) -> None:
+        await self.aclose()

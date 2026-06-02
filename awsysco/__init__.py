@@ -1,6 +1,6 @@
 """AWSYS.CO Python SDK — Official client library for the AWSYS.CO URL Shortener API."""
 
-from .client import Client
+from .client import AsyncClient, Client
 from .exceptions import (
     AwsysAuthError,
     AwsysConflictError,
@@ -11,21 +11,35 @@ from .exceptions import (
     AwsysValidationError,
 )
 from .models import (
+    AffiliateProgram,
     BulkLinkResult,
     BulkResult,
     ClickEvent,
+    CustomDomain,
     Folder,
     FolderList,
+    GeoRestriction,
     Link,
     LinkList,
     LinkStats,
     MeResponse,
+    NamespaceCheckResult,
+    NamespaceInfo,
+    OgMeta,
+    QRSettings,
+    RoutingRule,
+    SavedView,
+    SavedViewFilters,
+    TrustScoreResult,
+    UtmTemplate,
+    Webhook,
 )
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __all__ = [
-    # Client
+    # Clients
     "Client",
+    "AsyncClient",
     # Exceptions
     "AwsysError",
     "AwsysAuthError",
@@ -34,7 +48,7 @@ __all__ = [
     "AwsysConflictError",
     "AwsysValidationError",
     "AwsysRateLimitError",
-    # Models
+    # Core models
     "Link",
     "LinkList",
     "LinkStats",
@@ -44,4 +58,26 @@ __all__ = [
     "BulkResult",
     "BulkLinkResult",
     "MeResponse",
+    # Links advanced models
+    "RoutingRule",
+    "OgMeta",
+    "GeoRestriction",
+    # QR
+    "QRSettings",
+    # Trust Score
+    "TrustScoreResult",
+    # Namespace
+    "NamespaceInfo",
+    "NamespaceCheckResult",
+    # UTM Templates
+    "UtmTemplate",
+    # Webhooks
+    "Webhook",
+    # Saved Views
+    "SavedViewFilters",
+    "SavedView",
+    # Custom Domains
+    "CustomDomain",
+    # Affiliate
+    "AffiliateProgram",
 ]
