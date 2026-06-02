@@ -40,6 +40,31 @@ class FoldersResource:
         data = self._http.post("/api/v1/folders", json=body)
         return Folder.model_validate(data)
 
+    def update(
+        self,
+        folder_id: str,
+        *,
+        name: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Folder:
+        """Update a folder's name or color.
+
+        Args:
+            folder_id: The ID of the folder to update.
+            name: New display name.
+            color: New hex color string.
+
+        Returns:
+            The updated Folder object.
+        """
+        body: Dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if color is not None:
+            body["color"] = color
+        data = self._http.patch(f"/api/v1/folders/{folder_id}", json=body)
+        return Folder.model_validate(data)
+
     def delete(self, folder_id: str) -> None:
         """Delete a folder.
 
