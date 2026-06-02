@@ -59,6 +59,7 @@ class Link(_CamelModel):
     created: Optional[str] = None
     expires_at: Optional[str] = None
     max_clicks: Optional[int] = None
+    expire_fallback_url: Optional[str] = None
     password_protected: Optional[bool] = None
 
 
