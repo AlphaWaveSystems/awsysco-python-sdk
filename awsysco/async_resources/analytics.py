@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .._async_http import AsyncHttpClient
-from ..models import AggregateStats, ClickEvent, LinkStats
+from ..models import AggregateAnalytics, ClickEvent, LinkStats
 
 
 class AsyncAnalyticsResource:
@@ -24,7 +24,7 @@ class AsyncAnalyticsResource:
 
     async def get_aggregate_stats(
         self, short_path: str, *, period: Optional[str] = None
-    ) -> AggregateStats:
+    ) -> AggregateAnalytics:
         params = {}
         if period is not None:
             params["period"] = period
@@ -32,7 +32,7 @@ class AsyncAnalyticsResource:
             f"/api/v1/links/{short_path}/stats/aggregate",
             params=params if params else None,
         )
-        return AggregateStats.model_validate(data)
+        return AggregateAnalytics.model_validate(data)
 
     async def get_recent_clicks(self, *, limit: Optional[int] = None) -> List[ClickEvent]:
         params = {}

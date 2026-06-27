@@ -41,7 +41,7 @@ __all__ = [
     "DeviceBreakdown",
     "UTMBreakdown",
     "UpgradeForMore",
-    "AggregateStats",
+    "AggregateAnalytics",
 ]
 
 
@@ -497,7 +497,7 @@ class UpgradeForMore(_CamelModel):
     message: Optional[str] = None
 
 
-class AggregateStats(_CamelModel):
+class AggregateAnalytics(_CamelModel):
     """Aggregated click analytics from
     ``/api/v1/links/{short_path}/stats/aggregate``.
 

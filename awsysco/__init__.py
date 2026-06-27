@@ -12,7 +12,7 @@ from .exceptions import (
 )
 from .models import (
     AffiliateProgram,
-    AggregateStats,
+    AggregateAnalytics,
     BulkLinkResult,
     BulkResult,
     ClickEvent,
@@ -102,7 +102,7 @@ __all__ = [
     "ImportCounts",
     "ImportJob",
     # Aggregate analytics
-    "AggregateStats",
+    "AggregateAnalytics",
     "DayClicks",
     "HourClicks",
     "DeviceBreakdown",

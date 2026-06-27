@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from awsysco import Client
 from awsysco.async_resources.analytics import AsyncAnalyticsResource
-from awsysco.models import AggregateStats, ClickEvent, LinkStats
+from awsysco.models import AggregateAnalytics, ClickEvent, LinkStats
 from awsysco.resources.analytics import AnalyticsResource
 
 
@@ -147,7 +147,7 @@ def _make_aggregate_resource(payload):
     return AnalyticsResource(http)
 
 
-class TestAggregateStatsSync:
+class TestAggregateAnalyticsSync:
     def test_calls_aggregate_endpoint(self):
         resource = _make_aggregate_resource(_FREE_AGGREGATE)
         resource.get_aggregate_stats("abc")
@@ -164,7 +164,7 @@ class TestAggregateStatsSync:
 
     def test_free_tier_upgrade_for_more(self):
         result = _make_aggregate_resource(_FREE_AGGREGATE).get_aggregate_stats("abc")
-        assert isinstance(result, AggregateStats)
+        assert isinstance(result, AggregateAnalytics)
         assert result.tier == "free"
         assert result.total_clicks == 120
         assert result.unique_visitors == 80
@@ -196,7 +196,7 @@ def _make_async_aggregate_resource(payload):
     return AsyncAnalyticsResource(http)
 
 
-class TestAggregateStatsAsync:
+class TestAggregateAnalyticsAsync:
     def test_calls_aggregate_endpoint(self):
         resource = _make_async_aggregate_resource(_FREE_AGGREGATE)
         asyncio.run(resource.get_aggregate_stats("abc", period="7d"))
@@ -207,7 +207,7 @@ class TestAggregateStatsAsync:
     def test_free_tier_upgrade_for_more(self):
         resource = _make_async_aggregate_resource(_FREE_AGGREGATE)
         result = asyncio.run(resource.get_aggregate_stats("abc"))
-        assert isinstance(result, AggregateStats)
+        assert isinstance(result, AggregateAnalytics)
         assert result.tier == "free"
         assert result.device_breakdown is None
         assert result.upgrade_for_more.message.startswith("Upgrade to Pro")

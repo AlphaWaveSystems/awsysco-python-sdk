@@ -344,7 +344,7 @@ All responses are parsed into Pydantic v2 models:
 | `Web2AppSession` | `success`, `link_id`, `utm_params`, `routing_rule`, `country`, `clicked_at` |
 | `ImportJob` | `id`, `user_id`, `provider`, `status`, `scan_only`, `target_namespace`, `scope_filter`, `counts`, `errors`, `created_at`, `updated_at` |
 | `ImportCounts` | `fetched`, `transformed`, `written`, `errored` |
-| `AggregateStats` | `short_code`, `full_path`, `period`, `total_clicks`, `unique_visitors`, `clicks_by_day`, `country_breakdown`, `tier_limit`, `tier`, `device_breakdown`, `referrer_breakdown`, `browser_breakdown`, `os_breakdown`, `source_breakdown`, `hour_breakdown`, `utm_breakdown`, `upgrade_for_more` |
+| `AggregateAnalytics` | `short_code`, `full_path`, `period`, `total_clicks`, `unique_visitors`, `clicks_by_day`, `country_breakdown`, `tier_limit`, `tier`, `device_breakdown`, `referrer_breakdown`, `browser_breakdown`, `os_breakdown`, `source_breakdown`, `hour_breakdown`, `utm_breakdown`, `upgrade_for_more` |
 | `DayClicks` / `HourClicks` | `date`/`hour`, `clicks` |
 | `DeviceBreakdown` | `mobile`, `desktop`, `tablet` |
 | `UTMBreakdown` | `sources`, `mediums`, `campaigns` |

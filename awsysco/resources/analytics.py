@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .._http import HttpClient
-from ..models import AggregateStats, ClickEvent, LinkStats
+from ..models import AggregateAnalytics, ClickEvent, LinkStats
 
 
 class AnalyticsResource:
@@ -36,7 +36,7 @@ class AnalyticsResource:
 
     def get_aggregate_stats(
         self, short_path: str, *, period: Optional[str] = None
-    ) -> AggregateStats:
+    ) -> AggregateAnalytics:
         """Get aggregated (rolled-up) click analytics for a link.
 
         Unlike :meth:`get_stats`, which returns a raw per-click list, this
@@ -51,7 +51,7 @@ class AnalyticsResource:
                 ``'all'``).
 
         Returns:
-            An AggregateStats object.
+            An AggregateAnalytics object.
         """
         params = {}
         if period is not None:
@@ -60,7 +60,7 @@ class AnalyticsResource:
             f"/api/v1/links/{short_path}/stats/aggregate",
             params=params if params else None,
         )
-        return AggregateStats.model_validate(data)
+        return AggregateAnalytics.model_validate(data)
 
     def get_recent_clicks(self, *, limit: Optional[int] = None) -> List[ClickEvent]:
         """Get recent click events across all links for the authenticated user.
