@@ -31,11 +31,15 @@ from .models import (
     SavedView,
     SavedViewFilters,
     TrustScoreResult,
+    UsageLimits,
+    UsageOverage,
+    UsageStats,
     UtmTemplate,
+    Web2AppSession,
     Webhook,
 )
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 __all__ = [
     # Clients
     "Client",
@@ -80,4 +84,10 @@ __all__ = [
     "CustomDomain",
     # Affiliate
     "AffiliateProgram",
+    # Usage
+    "UsageStats",
+    "UsageLimits",
+    "UsageOverage",
+    # Web2App
+    "Web2AppSession",
 ]

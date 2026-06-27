@@ -159,6 +159,40 @@ me = client.me.get()
 print(me.email, me.subscription_tier, me.is_premium)
 ```
 
+### Usage
+
+| Method | Description |
+|---|---|
+| `client.usage.get()` | Get live account consumption + tier limits |
+
+Distinct from `me.get()` (static profile), `usage.get()` returns live counters
+(links, clicks, QR codes, API calls, tracked clicks), the current tier limits,
+and any active overage state. Limit fields may be an integer or the literal
+string `"unlimited"`.
+
+```python
+usage = client.usage.get()
+print(usage.total_links, usage.tracked_clicks_this_month)
+print(usage.limits.monthly_links)  # int or "unlimited"
+if usage.overage.active:
+    print(f"Overage charge: {usage.overage.estimated_charge_cents}c")
+```
+
+### Web2App
+
+| Method | Description |
+|---|---|
+| `client.web2app.consume_session(token)` | Consume a Web2App deep-link session |
+
+Web2App sessions are **single-use** (consumed on read) with a **24-hour TTL**.
+Unknown, expired, or already-consumed tokens raise `AwsysNotFoundError`;
+malformed tokens raise `AwsysValidationError`.
+
+```python
+session = client.web2app.consume_session("0123456789abcdef0123456789abcdef")
+print(session.link_id, session.utm_params, session.country)
+```
+
 ## Error Handling
 
 All errors inherit from `AwsysError`.
@@ -250,6 +284,10 @@ All responses are parsed into Pydantic v2 models:
 | `BulkResult` | `created`, `failed`, `results` |
 | `BulkLinkResult` | `success`, `short_url`, `long`, `error` |
 | `MeResponse` | `uid`, `email`, `subscription_tier`, `user_prefix`, `is_premium`, `features`, `limits` |
+| `UsageStats` | `total_links`, `total_clicks`, `links_created_this_month`, `qr_codes_this_month`, `folder_count`, `api_calls_this_month`, `tracked_clicks_this_month`, `tier`, `limits`, `has_api_key`, `api_key_created_at`, `user_prefix`, `is_premium`, `overage` |
+| `UsageLimits` | `links_per_month`, `monthly_links`, `daily_links`, `monthly_tracked_clicks`, `qr_codes`, `folders` (each `int` or `"unlimited"`), `api_calls_per_month`, `custom_slugs` |
+| `UsageOverage` | `active`, `started_at`, `expires_at`, `hours_until_drop`, `clicks_this_cycle`, `spending_limit_cents`, `estimated_charge_cents` |
+| `Web2AppSession` | `success`, `link_id`, `utm_params`, `routing_rule`, `country`, `clicked_at` |
 
 ## Development Setup
 

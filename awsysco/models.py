@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -30,6 +30,10 @@ __all__ = [
     "SavedView",
     "CustomDomain",
     "AffiliateProgram",
+    "UsageLimits",
+    "UsageOverage",
+    "UsageStats",
+    "Web2AppSession",
 ]
 
 
@@ -333,3 +337,77 @@ class AffiliateProgram(_CamelModel):
     cpa_rate: Optional[float] = None
     cookie_days: Optional[int] = None
     status: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Usage models — live consumption + tier limits
+# ---------------------------------------------------------------------------
+
+
+class UsageLimits(_CamelModel):
+    """Tier limits as reported by ``/api/user/stats``.
+
+    Several limit fields may be either an integer cap or the string
+    ``"unlimited"`` (the API serializes an unlimited cap of ``-1`` as the
+    literal ``"unlimited"``), so those are typed as ``Union[int, str]``.
+    """
+
+    links_per_month: Optional[Union[int, str]] = None
+    monthly_links: Optional[Union[int, str]] = None
+    daily_links: Optional[Union[int, str]] = None
+    monthly_tracked_clicks: Optional[Union[int, str]] = None
+    qr_codes: Optional[Union[int, str]] = None
+    folders: Optional[Union[int, str]] = None
+    api_calls_per_month: Optional[int] = None
+    custom_slugs: Optional[int] = None
+
+
+class UsageOverage(_CamelModel):
+    """Overage (pay-as-you-go) state within the current billing cycle."""
+
+    active: Optional[bool] = None
+    started_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    hours_until_drop: Optional[float] = None
+    clicks_this_cycle: Optional[int] = None
+    spending_limit_cents: Optional[int] = None
+    estimated_charge_cents: Optional[int] = None
+
+
+class UsageStats(_CamelModel):
+    """Live consumption stats from ``/api/user/stats``."""
+
+    total_links: Optional[int] = None
+    total_clicks: Optional[int] = None
+    links_created_this_month: Optional[int] = None
+    qr_codes_this_month: Optional[int] = None
+    folder_count: Optional[int] = None
+    api_calls_this_month: Optional[int] = None
+    tracked_clicks_this_month: Optional[int] = None
+    tier: Optional[str] = None
+    limits: Optional[UsageLimits] = None
+    has_api_key: Optional[bool] = None
+    api_key_created_at: Optional[str] = None
+    user_prefix: Optional[str] = None
+    is_premium: Optional[bool] = None
+    overage: Optional[UsageOverage] = None
+
+
+# ---------------------------------------------------------------------------
+# Web2App model
+# ---------------------------------------------------------------------------
+
+
+class Web2AppSession(_CamelModel):
+    """A single-use Web2App deep-link session returned by
+    ``/api/v1/web2app/{token}``.
+
+    Sessions are single-use (consumed on read) with a 24-hour TTL.
+    """
+
+    success: Optional[bool] = None
+    link_id: Optional[str] = None
+    utm_params: Dict[str, str] = Field(default_factory=dict)
+    routing_rule: Optional[Dict[str, Any]] = None
+    country: Optional[str] = None
+    clicked_at: Optional[str] = None

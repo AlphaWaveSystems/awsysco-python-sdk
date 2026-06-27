@@ -20,7 +20,9 @@ from .async_resources.qr import AsyncQRResource
 from .async_resources.saved_views import AsyncSavedViewsResource
 from .async_resources.tags import AsyncTagsResource
 from .async_resources.trust_score import AsyncTrustScoreResource
+from .async_resources.usage import AsyncUsageResource
 from .async_resources.utm_templates import AsyncUtmTemplatesResource
+from .async_resources.web2app import AsyncWeb2AppResource
 from .async_resources.webhooks import AsyncWebhooksResource
 from .resources.affiliate import AffiliateResource
 from .resources.agentlink import AgentlinkResource
@@ -36,7 +38,9 @@ from .resources.qr import QRResource
 from .resources.saved_views import SavedViewsResource
 from .resources.tags import TagsResource
 from .resources.trust_score import TrustScoreResource
+from .resources.usage import UsageResource
 from .resources.utm_templates import UtmTemplatesResource
+from .resources.web2app import Web2AppResource
 from .resources.webhooks import WebhooksResource
 
 _DEFAULT_BASE_URL = "https://awsys.co"
@@ -91,6 +95,10 @@ class Client:
         self.custom_domains = CustomDomainsResource(self._http)
         self.agentlink = AgentlinkResource(self._http)
         self.affiliate = AffiliateResource(self._http)
+
+        # Parity resources
+        self.usage = UsageResource(self._http)
+        self.web2app = Web2AppResource(self._http)
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""
@@ -150,6 +158,10 @@ class AsyncClient:
         self.custom_domains = AsyncCustomDomainsResource(self._http)
         self.agentlink = AsyncAgentlinkResource(self._http)
         self.affiliate = AsyncAffiliateResource(self._http)
+
+        # Parity resources
+        self.usage = AsyncUsageResource(self._http)
+        self.web2app = AsyncWeb2AppResource(self._http)
 
     async def aclose(self) -> None:
         """Close the underlying async HTTP connection pool."""
