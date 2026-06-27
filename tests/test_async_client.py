@@ -76,6 +76,14 @@ class TestAsyncClientConstruction:
         client = AsyncClient(api_key="awsys_test")
         assert hasattr(client, "affiliate")
 
+    def test_has_usage_resource(self):
+        client = AsyncClient(api_key="awsys_test")
+        assert hasattr(client, "usage")
+
+    def test_has_web2app_resource(self):
+        client = AsyncClient(api_key="awsys_test")
+        assert hasattr(client, "web2app")
+
     def test_qr_get_url_is_synchronous(self):
         """QR URL construction is sync even in AsyncClient."""
         client = AsyncClient(api_key="awsys_test", base_url="https://awsys.co")
