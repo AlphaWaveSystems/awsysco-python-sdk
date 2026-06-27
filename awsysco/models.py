@@ -34,6 +34,14 @@ __all__ = [
     "UsageOverage",
     "UsageStats",
     "Web2AppSession",
+    "ImportCounts",
+    "ImportJob",
+    "DayClicks",
+    "HourClicks",
+    "DeviceBreakdown",
+    "UTMBreakdown",
+    "UpgradeForMore",
+    "AggregateAnalytics",
 ]
 
 
@@ -411,3 +419,107 @@ class Web2AppSession(_CamelModel):
     routing_rule: Optional[Dict[str, Any]] = None
     country: Optional[str] = None
     clicked_at: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Imports models — provider link-import jobs
+# ---------------------------------------------------------------------------
+
+
+class ImportCounts(_CamelModel):
+    """Progress counters for an import job."""
+
+    fetched: int = 0
+    transformed: int = 0
+    written: int = 0
+    errored: int = 0
+
+
+class ImportJob(_CamelModel):
+    """A provider link-import job from ``/api/v1/imports``.
+
+    ``status`` progresses through states such as ``pending``, ``running``,
+    ``completed``, ``partial``, ``failed``, and ``cancelled``.
+    """
+
+    id: Optional[str] = None
+    user_id: Optional[str] = None
+    provider: Optional[str] = None
+    status: Optional[str] = None
+    scan_only: Optional[bool] = None
+    target_namespace: Optional[str] = None
+    scope_filter: Optional[str] = None
+    counts: Optional[ImportCounts] = None
+    errors: List[str] = Field(default_factory=list)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Aggregate analytics models — tier-gated rollups
+# ---------------------------------------------------------------------------
+
+
+class DayClicks(_CamelModel):
+    """Clicks for a single calendar day."""
+
+    date: Optional[str] = None
+    clicks: Optional[int] = None
+
+
+class HourClicks(_CamelModel):
+    """Clicks for a single hour-of-day bucket (0–23)."""
+
+    hour: Optional[int] = None
+    clicks: Optional[int] = None
+
+
+class DeviceBreakdown(_CamelModel):
+    """Click counts split by device class."""
+
+    mobile: Optional[int] = None
+    desktop: Optional[int] = None
+    tablet: Optional[int] = None
+
+
+class UTMBreakdown(_CamelModel):
+    """UTM rollups keyed by source / medium / campaign."""
+
+    sources: Dict[str, int] = Field(default_factory=dict)
+    mediums: Dict[str, int] = Field(default_factory=dict)
+    campaigns: Dict[str, int] = Field(default_factory=dict)
+
+
+class UpgradeForMore(_CamelModel):
+    """Tier-gating hint listing breakdowns available on higher tiers."""
+
+    available: List[str] = Field(default_factory=list)
+    message: Optional[str] = None
+
+
+class AggregateAnalytics(_CamelModel):
+    """Aggregated click analytics from
+    ``/api/v1/links/{short_path}/stats/aggregate``.
+
+    The set of populated breakdowns depends on the account tier — free-tier
+    responses include ``upgrade_for_more`` and omit the richer breakdowns,
+    while higher tiers populate ``device_breakdown``, ``utm_breakdown``, etc.
+    """
+
+    short_code: Optional[str] = None
+    full_path: Optional[str] = None
+    period: Optional[str] = None
+    total_clicks: Optional[int] = None
+    unique_visitors: Optional[int] = None
+    clicks_by_day: List[DayClicks] = Field(default_factory=list)
+    country_breakdown: Dict[str, int] = Field(default_factory=dict)
+    tier_limit: Optional[int] = None
+    tier: Optional[str] = None
+    device_breakdown: Optional[DeviceBreakdown] = None
+    referrer_breakdown: Optional[Dict[str, int]] = None
+    browser_breakdown: Optional[Dict[str, int]] = None
+    os_breakdown: Optional[Dict[str, int]] = None
+    source_breakdown: Optional[Dict[str, int]] = None
+    hour_breakdown: Optional[List[HourClicks]] = None
+    utm_breakdown: Optional[UTMBreakdown] = None
+    upgrade_for_more: Optional[UpgradeForMore] = None
