@@ -13,6 +13,7 @@ from .async_resources.bulk import AsyncBulkResource
 from .async_resources.custom_domains import AsyncCustomDomainsResource
 from .async_resources.data_export import AsyncDataExportResource
 from .async_resources.folders import AsyncFoldersResource
+from .async_resources.imports import AsyncImportsResource
 from .async_resources.links import AsyncLinksResource
 from .async_resources.me import AsyncMeResource
 from .async_resources.namespace import AsyncNamespaceResource
@@ -31,6 +32,7 @@ from .resources.bulk import BulkResource
 from .resources.custom_domains import CustomDomainsResource
 from .resources.data_export import DataExportResource
 from .resources.folders import FoldersResource
+from .resources.imports import ImportsResource
 from .resources.links import LinksResource
 from .resources.me import MeResource
 from .resources.namespace import NamespaceResource
@@ -99,6 +101,7 @@ class Client:
         # Parity resources
         self.usage = UsageResource(self._http)
         self.web2app = Web2AppResource(self._http)
+        self.imports = ImportsResource(self._http)
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""
@@ -162,6 +165,7 @@ class AsyncClient:
         # Parity resources
         self.usage = AsyncUsageResource(self._http)
         self.web2app = AsyncWeb2AppResource(self._http)
+        self.imports = AsyncImportsResource(self._http)
 
     async def aclose(self) -> None:
         """Close the underlying async HTTP connection pool."""

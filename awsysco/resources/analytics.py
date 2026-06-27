@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .._http import HttpClient
-from ..models import ClickEvent, LinkStats
+from ..models import AggregateStats, ClickEvent, LinkStats
 
 
 class AnalyticsResource:
@@ -33,6 +33,34 @@ class AnalyticsResource:
             params=params if params else None,
         )
         return LinkStats.model_validate(data)
+
+    def get_aggregate_stats(
+        self, short_path: str, *, period: Optional[str] = None
+    ) -> AggregateStats:
+        """Get aggregated (rolled-up) click analytics for a link.
+
+        Unlike :meth:`get_stats`, which returns a raw per-click list, this
+        returns server-side aggregations (clicks by day, country/device/UTM
+        breakdowns, unique visitors). The breakdowns present in the response
+        are tier-gated — free-tier responses include an ``upgrade_for_more``
+        hint and omit the richer breakdowns.
+
+        Args:
+            short_path: The short code or slug identifying the link.
+            period: Optional time period filter (e.g. ``'7d'``, ``'30d'``,
+                ``'all'``).
+
+        Returns:
+            An AggregateStats object.
+        """
+        params = {}
+        if period is not None:
+            params["period"] = period
+        data = self._http.get(
+            f"/api/v1/links/{short_path}/stats/aggregate",
+            params=params if params else None,
+        )
+        return AggregateStats.model_validate(data)
 
     def get_recent_clicks(self, *, limit: Optional[int] = None) -> List[ClickEvent]:
         """Get recent click events across all links for the authenticated user.

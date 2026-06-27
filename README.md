@@ -87,13 +87,33 @@ client.links.delete("my-link")
 
 | Method | Description |
 |---|---|
-| `client.analytics.get_stats(short_path)` | Get click stats for a link |
+| `client.analytics.get_stats(short_path)` | Get raw per-click stats for a link |
+| `client.analytics.get_aggregate_stats(short_path, *, period=None)` | Get rolled-up (aggregated) stats for a link |
 
 ```python
 stats = client.analytics.get_stats("abc123")
 print(stats.total_clicks)
 for click in stats.clicks:
     print(click.country, click.device, click.timestamp)
+```
+
+`get_aggregate_stats` returns server-side aggregations (clicks-by-day,
+country/device/UTM breakdowns, unique visitors). The breakdowns present are
+**tier-gated** — free-tier responses include an `upgrade_for_more` hint and
+omit the richer breakdowns; higher tiers populate `device_breakdown`,
+`utm_breakdown`, `hour_breakdown`, etc.
+
+```python
+agg = client.analytics.get_aggregate_stats("abc123", period="30d")
+print(agg.total_clicks, agg.unique_visitors, agg.tier)
+for day in agg.clicks_by_day:
+    print(day.date, day.clicks)
+print(agg.country_breakdown)  # {"US": 100, ...}
+
+if agg.device_breakdown:                       # populated on Pro+
+    print(agg.device_breakdown.mobile, agg.device_breakdown.desktop)
+if agg.upgrade_for_more:                        # present on free tier
+    print(agg.upgrade_for_more.message, agg.upgrade_for_more.available)
 ```
 
 ### QR Codes
@@ -193,6 +213,40 @@ session = client.web2app.consume_session("0123456789abcdef0123456789abcdef")
 print(session.link_id, session.utm_params, session.country)
 ```
 
+### Imports
+
+| Method | Description |
+|---|---|
+| `client.imports.start(*, provider, access_token, target_namespace=None, scan_only=None)` | Start a provider link-import job |
+| `client.imports.get_status(job_id)` | Get the current state of an import job |
+| `client.imports.cancel(job_id)` | Cancel an in-progress import job |
+| `client.imports.list(*, limit=None)` | List import jobs for the account |
+| `client.imports.wait_for_completion(job_id, *, poll_interval=2.0, timeout=120.0)` | Poll until the job reaches a terminal state |
+
+Import jobs run asynchronously server-side. `start` returns a `pending`
+`ImportJob`; poll `get_status` (or use `wait_for_completion`) until the status
+is one of `completed`, `partial`, `failed`, or `cancelled`. Pass
+`scan_only=True` to preview what would be imported without writing links.
+
+```python
+job = client.imports.start(provider="bitly", access_token="<bitly-token>")
+print(job.id, job.status)
+
+# Block until the import finishes (raises TimeoutError if it overruns).
+done = client.imports.wait_for_completion(job.id, poll_interval=5.0, timeout=300.0)
+print(done.status, done.counts.written, done.counts.errored)
+for err in done.errors:
+    print(err)
+
+# Or drive it manually
+for j in client.imports.list(limit=10):
+    print(j.id, j.provider, j.status)
+client.imports.cancel(job.id)
+```
+
+All `imports` methods are available identically on `AsyncClient`
+(`await client.imports.start(...)`, `await client.imports.wait_for_completion(...)`).
+
 ## Error Handling
 
 All errors inherit from `AwsysError`.
@@ -288,6 +342,13 @@ All responses are parsed into Pydantic v2 models:
 | `UsageLimits` | `links_per_month`, `monthly_links`, `daily_links`, `monthly_tracked_clicks`, `qr_codes`, `folders` (each `int` or `"unlimited"`), `api_calls_per_month`, `custom_slugs` |
 | `UsageOverage` | `active`, `started_at`, `expires_at`, `hours_until_drop`, `clicks_this_cycle`, `spending_limit_cents`, `estimated_charge_cents` |
 | `Web2AppSession` | `success`, `link_id`, `utm_params`, `routing_rule`, `country`, `clicked_at` |
+| `ImportJob` | `id`, `user_id`, `provider`, `status`, `scan_only`, `target_namespace`, `scope_filter`, `counts`, `errors`, `created_at`, `updated_at` |
+| `ImportCounts` | `fetched`, `transformed`, `written`, `errored` |
+| `AggregateStats` | `short_code`, `full_path`, `period`, `total_clicks`, `unique_visitors`, `clicks_by_day`, `country_breakdown`, `tier_limit`, `tier`, `device_breakdown`, `referrer_breakdown`, `browser_breakdown`, `os_breakdown`, `source_breakdown`, `hour_breakdown`, `utm_breakdown`, `upgrade_for_more` |
+| `DayClicks` / `HourClicks` | `date`/`hour`, `clicks` |
+| `DeviceBreakdown` | `mobile`, `desktop`, `tablet` |
+| `UTMBreakdown` | `sources`, `mediums`, `campaigns` |
+| `UpgradeForMore` | `available`, `message` |
 
 ## Development Setup
 

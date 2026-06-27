@@ -12,13 +12,19 @@ from .exceptions import (
 )
 from .models import (
     AffiliateProgram,
+    AggregateStats,
     BulkLinkResult,
     BulkResult,
     ClickEvent,
     CustomDomain,
+    DayClicks,
+    DeviceBreakdown,
     Folder,
     FolderList,
     GeoRestriction,
+    HourClicks,
+    ImportCounts,
+    ImportJob,
     Link,
     LinkList,
     LinkStats,
@@ -31,15 +37,17 @@ from .models import (
     SavedView,
     SavedViewFilters,
     TrustScoreResult,
+    UpgradeForMore,
     UsageLimits,
     UsageOverage,
     UsageStats,
+    UTMBreakdown,
     UtmTemplate,
     Web2AppSession,
     Webhook,
 )
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __all__ = [
     # Clients
     "Client",
@@ -90,4 +98,14 @@ __all__ = [
     "UsageOverage",
     # Web2App
     "Web2AppSession",
+    # Imports
+    "ImportCounts",
+    "ImportJob",
+    # Aggregate analytics
+    "AggregateStats",
+    "DayClicks",
+    "HourClicks",
+    "DeviceBreakdown",
+    "UTMBreakdown",
+    "UpgradeForMore",
 ]
