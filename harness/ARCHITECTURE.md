@@ -1,13 +1,13 @@
 <!-- HARNESS:START
-     version=0.33.0
+     version=0.34.0
      schema=1
-     updated=2026-07-19T05:36:09Z
+     updated=2026-07-19T12:15:55Z
      DO NOT EDIT — regenerate with: harness-ctl update /Users/patrickbertsch/dev/awsysco-python-sdk
 -->
 
 # Architecture — awsysco-python-sdk
 
-> Auto-generated from constitution scan on 2026-07-19T05:36:09Z.
+> Auto-generated from constitution scan on 2026-07-19T12:15:55Z.
 > Reflects the state of the repo at install time — update manually as the project evolves,
 > or re-run `harness-ctl update /Users/patrickbertsch/dev/awsysco-python-sdk` to refresh from the latest scan.
 
@@ -19,10 +19,10 @@
 |---|---|
 | Name | awsysco-python-sdk |
 | Path | `/Users/patrickbertsch/dev/awsysco-python-sdk` |
-| Repository | (not a git repo) |
+| Repository | https://github.com/AlphaWaveSystems/awsysco-python-sdk.git |
 | Stack | python |
 | Language(s) | Python |
-| Runtime | (not detected) |
+| Runtime | Python 3.11.15 |
 | Package manager | pip / poetry |
 | Zeus owner | `hephaestus` |
 
@@ -120,7 +120,8 @@ client.links.delete("my-link")
 
 | Method | Description |
 |---|---|
-| `client.analytics.get_stats(short_path)` | Get click stats for a link |
+| `client.analytics.get_stats(short_path)` | Get raw per-click stats for a link |
+| `client.analytics.get_aggregate_stats(short_path, *, period=None)` | Get rolled-up (aggregated) stats for a link |
 
 ```python
 stats = client.analytics.get_stats("abc123")
@@ -129,28 +130,26 @@ for click in stats.clicks:
     print(click.country, click.device, click.timestamp)
 ```
 
-### QR Codes
-
-| Method | Description |
-|---|---|
-| `client.qr.get_url(short_code, *, size=300, color='000000', bg_color='FFFFFF')` | Build QR image URL |
-
-No HTTP request is made — this method constructs and returns the URL string.
+`get_aggregate_stats` returns server-side aggregations (clicks-by-day,
+country/device/UTM breakdowns, unique visitors). The breakdowns present are
+**tier-gated** — free-tier responses include an `upgrade_for_more` hint and
+omit the richer breakdowns; higher tiers populate `device_breakdown`,
+`utm_breakdown`, `hour_breakdown`, etc.
 
 ```python
-url = client.qr.get_url("abc123", size=400, color="FF5733", bg_color="FFFFFF")
-# https://awsys.co/api/qr/abc123?size=400&color=FF5733&bgColor=FFFFFF
+agg = client.analytics.get_aggregate_stats("abc123", period="30d")
+print(agg.total_clicks, agg.unique_visitors, agg.tier)
+for day in agg.clicks_by_day:
+    print(day.date, day.clicks)
+print(agg.country_breakdown)  # {"US": 100, ...}
+
+if agg.device_breakdown:                       # populated on Pro+
+    print(agg.device_breakdown.mobile, agg.device_breakdown.desktop)
+if agg.upgrade_for_more:                        # present on free tier
+    print(agg.upgrade_for_more.message, agg.upgrade_for_more.available)
 ```
 
-### Folders
-
-| Method | Description |
-|---|---|
-| `client.folders.list()` | List all folders |
-| `client.folders.create(name, *, color)` | Create a folder |
-| `client.folders.delete(folder_id)` | Delete a folder |
-| `client.folders.assign_link(short_path, folder_id)` | Assign a link to a folder |
-| `client.folders.remove_link(short_path)` | Remove a link from its folder |
+### QR Codes
 
 
 ---
@@ -255,10 +254,10 @@ Variables the project reads at runtime. Do not commit values — use the harness
 Rules extracted from `CLAUDE.md` at install time:
 
 <!-- HARNESS:START
-     version=0.32.0
+     version=0.33.0
      schema=1
      agent=awsysco-python-sdk
-     updated=2026-07-18T02:25:54Z
+     updated=2026-07-19T05:36:09Z
      DO NOT EDIT THIS BLOCK — regenerate with: harness-ctl update /Users/patrickbertsch/dev/awsysco-python-sdk
 -->
 
