@@ -1,13 +1,13 @@
 <!-- HARNESS:START
-     version=0.32.0
+     version=0.33.0
      schema=1
-     updated=2026-07-18T02:25:54Z
+     updated=2026-07-19T05:36:09Z
      DO NOT EDIT — regenerate with: harness-ctl update /Users/patrickbertsch/dev/awsysco-python-sdk
 -->
 
 # Architecture — awsysco-python-sdk
 
-> Auto-generated from constitution scan on 2026-07-18T02:25:54Z.
+> Auto-generated from constitution scan on 2026-07-19T05:36:09Z.
 > Reflects the state of the repo at install time — update manually as the project evolves,
 > or re-run `harness-ctl update /Users/patrickbertsch/dev/awsysco-python-sdk` to refresh from the latest scan.
 
@@ -19,10 +19,10 @@
 |---|---|
 | Name | awsysco-python-sdk |
 | Path | `/Users/patrickbertsch/dev/awsysco-python-sdk` |
-| Repository | https://github.com/AlphaWaveSystems/awsysco-python-sdk.git |
+| Repository | (not a git repo) |
 | Stack | python |
 | Language(s) | Python |
-| Runtime | Python 3.11.15 |
+| Runtime | (not detected) |
 | Package manager | pip / poetry |
 | Zeus owner | `hephaestus` |
 
@@ -255,10 +255,10 @@ Variables the project reads at runtime. Do not commit values — use the harness
 Rules extracted from `CLAUDE.md` at install time:
 
 <!-- HARNESS:START
-     version=0.31.0
+     version=0.32.0
      schema=1
      agent=awsysco-python-sdk
-     updated=2026-07-04T02:31:42Z
+     updated=2026-07-18T02:25:54Z
      DO NOT EDIT THIS BLOCK — regenerate with: harness-ctl update /Users/patrickbertsch/dev/awsysco-python-sdk
 -->
 
