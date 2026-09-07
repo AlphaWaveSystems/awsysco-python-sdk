@@ -13,7 +13,7 @@ class AsyncTagsResource:
 
     async def add(self, short_path: str, tag: str) -> dict:
         encoded = quote(short_path, safe="")
-        return await self._http.post(f"/api/link/{encoded}/tags", json={"tag": tag}) or {}
+        return await self._http.post(f"/api/link/{encoded}/tags", json={"tags": [tag]}) or {}
 
     async def remove(self, short_path: str, tag: str) -> dict:
         encoded = quote(short_path, safe="")

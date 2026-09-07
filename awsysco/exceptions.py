@@ -99,8 +99,54 @@ class AwsysRateLimitError(AwsysError):
         message: str = "Rate limit exceeded. Please slow down.",
         *,
         retry_after: Optional[float] = None,
+        resets_at: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         kwargs.setdefault("status", 429)
         super().__init__(message, **kwargs)
         self.retry_after = retry_after
+        self.resets_at = resets_at
+
+
+class AwsysServerError(AwsysError):
+    """5xx — the platform reported an internal error."""
+
+    def __init__(
+        self,
+        message: str = "Server error. Please try again later.",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, **kwargs)
+
+
+class AwsysNetworkError(AwsysError):
+    """A transport-level failure (connection reset/refused, DNS, etc.) with no HTTP response."""
+
+    def __init__(
+        self,
+        message: str = "Network error while contacting the AWSYS API.",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, **kwargs)
+
+
+class AwsysTimeoutError(AwsysNetworkError):
+    """A request did not complete within the configured timeout."""
+
+    def __init__(
+        self,
+        message: str = "Request to the AWSYS API timed out.",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, **kwargs)
+
+
+class AwsysConfigurationError(AwsysError):
+    """Invalid SDK configuration (missing API key, bad base URL) — raised before any network call."""
+
+    def __init__(
+        self,
+        message: str = "Invalid AWSYS SDK configuration.",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, **kwargs)

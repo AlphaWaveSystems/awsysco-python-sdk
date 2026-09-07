@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
 from .._http import HttpClient
@@ -25,6 +25,7 @@ class ImportsResource:
         provider: str,
         access_token: str,
         target_namespace: Optional[str] = None,
+        scope_filter: Optional[str] = None,
         scan_only: Optional[bool] = None,
     ) -> ImportJob:
         """Start a new provider link-import job.
@@ -33,16 +34,19 @@ class ImportsResource:
             provider: The source provider (e.g. ``'bitly'``, ``'rebrandly'``).
             access_token: An OAuth/API token for the source provider account.
             target_namespace: Optional namespace to import links into.
+            scope_filter: Optional filter restricting which links are imported.
             scan_only: If ``True``, fetch and report without writing links.
 
         Returns:
             The created ImportJob (initially in a ``pending`` state).
         """
-        body = {"provider": provider, "access_token": access_token}
+        body: Dict[str, Any] = {"provider": provider, "accessToken": access_token}
         if target_namespace is not None:
-            body["target_namespace"] = target_namespace
+            body["targetNamespace"] = target_namespace
+        if scope_filter is not None:
+            body["scopeFilter"] = scope_filter
         if scan_only is not None:
-            body["scan_only"] = scan_only
+            body["scanOnly"] = scan_only
         data = self._http.post("/api/v1/imports", json=body)
         return ImportJob.model_validate(data)
 
@@ -81,7 +85,7 @@ class ImportsResource:
         Returns:
             A list of ImportJob objects.
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
         data = self._http.get(
@@ -90,6 +94,30 @@ class ImportsResource:
         )
         items = data.get("jobs", []) if isinstance(data, dict) else (data or [])
         return [ImportJob.model_validate(item) for item in items]
+
+    def get_redirect_map_csv(self, job_id: str) -> str:
+        """Download the redirect map for a completed import job, as CSV.
+
+        Args:
+            job_id: The import job id.
+
+        Returns:
+            A CSV-formatted string mapping old → new short paths.
+        """
+        encoded = quote(job_id, safe="")
+        return self._http.get_text(f"/api/v1/imports/{encoded}/redirect-map.csv")
+
+    def get_redirect_map_json(self, job_id: str) -> Any:
+        """Download the redirect map for a completed import job, as JSON.
+
+        Args:
+            job_id: The import job id.
+
+        Returns:
+            The parsed JSON redirect map (shape is provider-dependent).
+        """
+        encoded = quote(job_id, safe="")
+        return self._http.get(f"/api/v1/imports/{encoded}/redirect-map.json")
 
     def wait_for_completion(
         self,

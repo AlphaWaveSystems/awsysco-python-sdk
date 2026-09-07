@@ -24,7 +24,7 @@ class TagsResource:
             The API response dict.
         """
         encoded = quote(short_path, safe="")
-        return self._http.post(f"/api/link/{encoded}/tags", json={"tag": tag}) or {}
+        return self._http.post(f"/api/link/{encoded}/tags", json={"tags": [tag]}) or {}
 
     def remove(self, short_path: str, tag: str) -> dict:
         """Remove a tag from a link.

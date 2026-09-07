@@ -12,7 +12,7 @@ from ..models import QRSettings
 class AsyncQRResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
-        self._base_url = http._base_url
+        self._base_url = http.base_url
 
     def get_url(self, short_code: str, *, size: int = 300, color: str = "000000", bg_color: str = "FFFFFF") -> str:
         params = urlencode({"size": size, "color": color, "bgColor": bg_color})

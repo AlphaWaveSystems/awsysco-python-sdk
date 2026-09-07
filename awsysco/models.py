@@ -2,10 +2,39 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+
+
+def _coerce_firestore_timestamps(data: Any) -> Any:
+    """Convert any top-level Firestore ``{_seconds,_nanoseconds}``/``{seconds,nanoseconds}``
+    value to an ISO-8601 string, in place, before field validation runs.
+
+    Per the cross-SDK contract, timestamp fields must accept both plain ISO-8601
+    strings and Firestore's raw timestamp shape. Fields stay typed as ``Optional[str]``
+    (upgrading to a native ``datetime`` would be a breaking type change for a minor
+    release) — an unrecognized shape is left untouched rather than raising, since a
+    parse failure here must never crash model validation.
+    """
+    if not isinstance(data, dict):
+        return data
+    result = dict(data)
+    for key, value in data.items():
+        if not isinstance(value, dict):
+            continue
+        seconds = value.get("_seconds", value.get("seconds"))
+        nanos = value.get("_nanoseconds", value.get("nanoseconds", 0))
+        if not isinstance(seconds, (int, float)):
+            continue
+        try:
+            dt = datetime.fromtimestamp(seconds + (nanos or 0) / 1e9, tz=timezone.utc)
+            result[key] = dt.isoformat().replace("+00:00", "Z")
+        except (OverflowError, OSError, ValueError):
+            pass  # leave the raw value in place — never crash on a bad timestamp
+    return result
 
 __all__ = [
     "Link",
@@ -42,6 +71,7 @@ __all__ = [
     "UTMBreakdown",
     "UpgradeForMore",
     "AggregateAnalytics",
+    "Profile",
 ]
 
 
@@ -53,6 +83,11 @@ class _CamelModel(BaseModel):
         populate_by_name=True,
         extra="allow",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_timestamps(cls, data: Any) -> Any:
+        return _coerce_firestore_timestamps(data)
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +101,8 @@ class Link(_CamelModel):
     id: Optional[str] = None
     short_url: Optional[str] = None
     short_code: Optional[str] = None
+    full_path: Optional[str] = None
+    namespace: Optional[str] = None
     long: Optional[str] = None
     clicks: Optional[int] = None
     created: Optional[str] = None
@@ -219,12 +256,18 @@ class QRSettings(_CamelModel):
 
 
 class TrustScoreResult(_CamelModel):
-    """Result of a URL trust/safety scan."""
+    """Result of a URL trust/safety scan.
+
+    Wire keys are ``shortCode``/``trustScore``/``trustStatus`` — ``short``/``long``
+    are kept as separate (currently unpopulated) fields since the platform doesn't
+    send them under those names; removing them would be a breaking change.
+    """
 
     short: Optional[str] = None
     long: Optional[str] = None
-    score: Optional[float] = None
-    status: Optional[str] = None
+    short_code: Optional[str] = None
+    score: Optional[float] = Field(default=None, alias="trustScore")
+    status: Optional[str] = Field(default=None, alias="trustStatus")
     threats: Optional[List[str]] = None
     scanned_at: Optional[str] = None
 
@@ -275,17 +318,32 @@ class UtmTemplate(_CamelModel):
 
 
 class Webhook(_CamelModel):
-    """A registered webhook endpoint."""
+    """A registered webhook endpoint.
+
+    Legacy webhook documents on the platform may omit every field but
+    ``id``/``url``/``events`` (no ``enabled``, ``secret``, etc.) — all other fields
+    stay ``Optional`` and default to ``None`` rather than a guessed default.
+    """
 
     id: Optional[str] = None
     url: Optional[str] = None
     events: List[str] = Field(default_factory=list)
     name: Optional[str] = None
+    secret: Optional[str] = None
     enabled: Optional[bool] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     last_triggered: Optional[str] = None
     failure_count: Optional[int] = None
+    success_count: Optional[int] = None
+
+    def __repr__(self) -> str:
+        # `secret` is a webhook signing secret — never include it in reprs/logs.
+        data = self.model_dump(by_alias=False)
+        if data.get("secret") is not None:
+            data["secret"] = "<redacted>"
+        fields = ", ".join(f"{k}={v!r}" for k, v in data.items())
+        return f"{self.__class__.__name__}({fields})"
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +385,7 @@ class CustomDomain(_CamelModel):
     is_default: Optional[bool] = None
     link_count: Optional[int] = None
     created_at: Optional[str] = None
+    default_redirect: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -523,3 +582,22 @@ class AggregateAnalytics(_CamelModel):
     hour_breakdown: Optional[List[HourClicks]] = None
     utm_breakdown: Optional[UTMBreakdown] = None
     upgrade_for_more: Optional[UpgradeForMore] = None
+
+
+# ---------------------------------------------------------------------------
+# Profile model — /api/user/profile
+# ---------------------------------------------------------------------------
+
+
+class Profile(_CamelModel):
+    """The authenticated user's account profile.
+
+    Distinct from :class:`MeResponse` (subscription tier/feature summary) and
+    :class:`UsageStats` (live consumption counters). Unknown fields returned by the
+    platform are preserved (``extra="allow"`` on the base model).
+    """
+
+    uid: Optional[str] = None
+    email: Optional[str] = None
+    display_name: Optional[str] = None
+    created_at: Optional[str] = None

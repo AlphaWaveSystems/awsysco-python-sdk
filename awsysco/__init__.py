@@ -1,13 +1,18 @@
 """AWSYS.CO Python SDK — Official client library for the AWSYS.CO URL Shortener API."""
 
+from ._version import __version__
 from .client import AsyncClient, Client
 from .exceptions import (
     AwsysAuthError,
+    AwsysConfigurationError,
     AwsysConflictError,
     AwsysError,
     AwsysForbiddenError,
+    AwsysNetworkError,
     AwsysNotFoundError,
     AwsysRateLimitError,
+    AwsysServerError,
+    AwsysTimeoutError,
     AwsysValidationError,
 )
 from .models import (
@@ -32,6 +37,7 @@ from .models import (
     NamespaceCheckResult,
     NamespaceInfo,
     OgMeta,
+    Profile,
     QRSettings,
     RoutingRule,
     SavedView,
@@ -47,8 +53,9 @@ from .models import (
     Webhook,
 )
 
-__version__ = "1.3.0"
 __all__ = [
+    # Version
+    "__version__",
     # Clients
     "Client",
     "AsyncClient",
@@ -60,6 +67,10 @@ __all__ = [
     "AwsysConflictError",
     "AwsysValidationError",
     "AwsysRateLimitError",
+    "AwsysServerError",
+    "AwsysNetworkError",
+    "AwsysTimeoutError",
+    "AwsysConfigurationError",
     # Core models
     "Link",
     "LinkList",
@@ -96,6 +107,8 @@ __all__ = [
     "UsageStats",
     "UsageLimits",
     "UsageOverage",
+    # Profile
+    "Profile",
     # Web2App
     "Web2AppSession",
     # Imports

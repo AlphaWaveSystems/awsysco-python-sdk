@@ -1,6 +1,5 @@
 """Unit tests for the QR resource — no HTTP calls made."""
 
-import pytest
 
 from awsysco import Client
 

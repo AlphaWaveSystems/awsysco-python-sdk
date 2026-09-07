@@ -44,21 +44,23 @@ def _make_resource():
 
 
 class TestImportsSync:
-    def test_start_posts_snake_case_body(self):
+    def test_start_posts_camel_case_body(self):
         resource = _make_resource()
         resource.start(
             provider="bitly",
             access_token="tok_123",
             target_namespace="acme",
+            scope_filter="tag:promo",
             scan_only=True,
         )
         resource._http.post.assert_called_once_with(
             "/api/v1/imports",
             json={
                 "provider": "bitly",
-                "access_token": "tok_123",
-                "target_namespace": "acme",
-                "scan_only": True,
+                "accessToken": "tok_123",
+                "targetNamespace": "acme",
+                "scopeFilter": "tag:promo",
+                "scanOnly": True,
             },
         )
 
@@ -67,7 +69,7 @@ class TestImportsSync:
         resource.start(provider="bitly", access_token="tok_123")
         resource._http.post.assert_called_once_with(
             "/api/v1/imports",
-            json={"provider": "bitly", "access_token": "tok_123"},
+            json={"provider": "bitly", "accessToken": "tok_123"},
         )
 
     def test_start_returns_import_job(self):
@@ -130,6 +132,24 @@ class TestImportsSync:
         with pytest.raises(TimeoutError):
             resource.wait_for_completion(_JOB_ID, poll_interval=0.0, timeout=0.0)
 
+    def test_get_redirect_map_csv_calls_endpoint(self):
+        resource = _make_resource()
+        resource._http.get_text = MagicMock(return_value="old,new\nabc,xyz\n")
+        result = resource.get_redirect_map_csv(_JOB_ID)
+        resource._http.get_text.assert_called_once_with(
+            f"/api/v1/imports/{_JOB_ID}/redirect-map.csv"
+        )
+        assert result == "old,new\nabc,xyz\n"
+
+    def test_get_redirect_map_json_calls_endpoint(self):
+        resource = _make_resource()
+        resource._http.get.return_value = {"abc": "xyz"}
+        result = resource.get_redirect_map_json(_JOB_ID)
+        resource._http.get.assert_called_once_with(
+            f"/api/v1/imports/{_JOB_ID}/redirect-map.json"
+        )
+        assert result == {"abc": "xyz"}
+
 
 def _make_async_resource():
     http = MagicMock()
@@ -140,7 +160,7 @@ def _make_async_resource():
 
 
 class TestImportsAsync:
-    def test_start_posts_snake_case_body(self):
+    def test_start_posts_camel_case_body(self):
         resource = _make_async_resource()
         asyncio.run(
             resource.start(
@@ -151,8 +171,8 @@ class TestImportsAsync:
             "/api/v1/imports",
             json={
                 "provider": "bitly",
-                "access_token": "tok_123",
-                "scan_only": True,
+                "accessToken": "tok_123",
+                "scanOnly": True,
             },
         )
 
@@ -203,3 +223,21 @@ class TestImportsAsync:
                     _JOB_ID, poll_interval=0.0, timeout=0.0
                 )
             )
+
+    def test_get_redirect_map_csv_calls_endpoint(self):
+        resource = _make_async_resource()
+        resource._http.get_text = AsyncMock(return_value="old,new\nabc,xyz\n")
+        result = asyncio.run(resource.get_redirect_map_csv(_JOB_ID))
+        resource._http.get_text.assert_awaited_once_with(
+            f"/api/v1/imports/{_JOB_ID}/redirect-map.csv"
+        )
+        assert result == "old,new\nabc,xyz\n"
+
+    def test_get_redirect_map_json_calls_endpoint(self):
+        resource = _make_async_resource()
+        resource._http.get = AsyncMock(return_value={"abc": "xyz"})
+        result = asyncio.run(resource.get_redirect_map_json(_JOB_ID))
+        resource._http.get.assert_awaited_once_with(
+            f"/api/v1/imports/{_JOB_ID}/redirect-map.json"
+        )
+        assert result == {"abc": "xyz"}

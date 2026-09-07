@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from .._async_http import AsyncHttpClient
 from ..models import AggregateAnalytics, ClickEvent, LinkStats
@@ -13,7 +13,7 @@ class AsyncAnalyticsResource:
         self._http = http
 
     async def get_stats(self, short_path: str, *, period: Optional[str] = None) -> LinkStats:
-        params = {}
+        params: Dict[str, Any] = {}
         if period is not None:
             params["period"] = period
         data = await self._http.get(
@@ -25,7 +25,7 @@ class AsyncAnalyticsResource:
     async def get_aggregate_stats(
         self, short_path: str, *, period: Optional[str] = None
     ) -> AggregateAnalytics:
-        params = {}
+        params: Dict[str, Any] = {}
         if period is not None:
             params["period"] = period
         data = await self._http.get(
@@ -34,12 +34,18 @@ class AsyncAnalyticsResource:
         )
         return AggregateAnalytics.model_validate(data)
 
-    async def get_recent_clicks(self, *, limit: Optional[int] = None) -> List[ClickEvent]:
-        params = {}
+    async def get_recent_clicks(
+        self, *, limit: Optional[int] = None, since: Optional[str] = None
+    ) -> List[ClickEvent]:
+        """Requires the "Live Globe" feature flag; disabled accounts get a 403
+        ``FEATURE_DISABLED`` (surfaces as ``AwsysForbiddenError``)."""
+        params: Dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
+        if since is not None:
+            params["since"] = since
         data = await self._http.get(
-            "/api/user/recent-clicks",
+            "/api/user/clicks/recent",
             params=params if params else None,
         )
         if isinstance(data, list):

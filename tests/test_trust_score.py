@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from awsysco.models import TrustScoreResult
 from awsysco.resources.trust_score import TrustScoreResource

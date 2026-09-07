@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Dict, Optional
 
 from .._http import HttpClient
+from ..exceptions import AwsysForbiddenError
 from ..models import CustomDomain
 
 
@@ -47,14 +49,30 @@ class CustomDomainsResource:
     def activate(self, domain: str) -> CustomDomain:
         """Activate a verified domain.
 
+        .. deprecated::
+            This route (``POST /api/user/domains/:domain/activate``) is Firebase-only
+            (``requireAuthStrict``) and cannot be called with an API key — it always
+            401s. Deprecated in 1.4.0, will be removed in the next major version. Use
+            the AWSYS dashboard to activate a domain instead.
+
         Args:
             domain: The domain hostname to activate.
 
-        Returns:
-            The activated CustomDomain object.
+        Raises:
+            AwsysForbiddenError: Always — this route is not reachable with an API key.
         """
-        data = self._http.post(f"/api/user/domains/{domain}/activate")
-        return CustomDomain.model_validate(data)
+        warnings.warn(
+            "custom_domains.activate() is deprecated: this route is Firebase-only and "
+            "cannot be called with an API key. Activate the domain from the AWSYS "
+            "dashboard instead. This method will be removed in the next major version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        raise AwsysForbiddenError(
+            f"Cannot activate domain {domain!r} with an API key — "
+            "POST /api/user/domains/:domain/activate requires Firebase auth. "
+            "Activate the domain from the AWSYS dashboard instead."
+        )
 
     def update(
         self,
@@ -62,6 +80,7 @@ class CustomDomainsResource:
         *,
         is_default: Optional[bool] = None,
         not_found_html: Optional[str] = None,
+        default_redirect: Optional[str] = None,
     ) -> CustomDomain:
         """Update custom domain settings.
 
@@ -69,6 +88,8 @@ class CustomDomainsResource:
             domain: The domain hostname to update.
             is_default: Whether this domain should be the default.
             not_found_html: Custom HTML for 404 pages on this domain.
+            default_redirect: URL to redirect to when a short path on this domain
+                isn't found.
 
         Returns:
             The updated CustomDomain object.
@@ -78,6 +99,8 @@ class CustomDomainsResource:
             body["isDefault"] = is_default
         if not_found_html is not None:
             body["notFoundHtml"] = not_found_html
+        if default_redirect is not None:
+            body["defaultRedirect"] = default_redirect
         data = self._http.patch(f"/api/user/domains/{domain}", json=body)
         return CustomDomain.model_validate(data)
 

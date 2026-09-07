@@ -14,7 +14,7 @@ class QRResource:
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
-        self._base_url = http._base_url
+        self._base_url = http.base_url
 
     def get_url(
         self,

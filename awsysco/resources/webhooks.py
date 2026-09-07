@@ -28,7 +28,7 @@ class WebhooksResource:
         Returns:
             API response dict containing webhooks.
         """
-        return self._http.get("/api/webhooks") or {}
+        return self._http.get("/api/v1/webhooks") or {}
 
     def create(
         self,
@@ -55,11 +55,14 @@ class WebhooksResource:
             body["name"] = name
         if secret is not None:
             body["secret"] = secret
-        data = self._http.post("/api/webhooks", json=body)
+        data = self._http.post("/api/v1/webhooks", json=body)
         return Webhook.model_validate(data)
 
     def update(self, webhook_id: str, **kwargs: Any) -> Webhook:
         """Update a webhook's configuration.
+
+        Note: unlike the other webhook routes, this one has no ``/api/v1`` alias on
+        the platform — only the unversioned path works.
 
         Args:
             webhook_id: The ID of the webhook to update.
@@ -69,7 +72,7 @@ class WebhooksResource:
         Returns:
             The updated Webhook object.
         """
-        # Map snake_case kwargs to camelCase
+        # Map snake_case kwargs to the platform's wire keys.
         body: Dict[str, Any] = {}
         key_map = {
             "url": "url",
@@ -93,7 +96,7 @@ class WebhooksResource:
         Returns:
             The API response dict.
         """
-        return self._http.delete(f"/api/webhooks/{webhook_id}") or {}
+        return self._http.delete(f"/api/v1/webhooks/{webhook_id}") or {}
 
     def test(self, webhook_id: str, event_type: str) -> dict:
         """Send a test event to a webhook.
@@ -107,7 +110,7 @@ class WebhooksResource:
         """
         return (
             self._http.post(
-                f"/api/webhooks/{webhook_id}/test",
+                f"/api/v1/webhooks/{webhook_id}/test",
                 json={"eventType": event_type},
             )
             or {}

@@ -64,7 +64,7 @@ class TestAnalyticsUnit:
         resource._http.get.return_value = []
         resource.get_recent_clicks()
         resource._http.get.assert_called_once_with(
-            "/api/user/recent-clicks", params=None
+            "/api/user/clicks/recent", params=None
         )
 
     def test_get_recent_clicks_with_limit(self):
@@ -72,7 +72,16 @@ class TestAnalyticsUnit:
         resource._http.get.return_value = []
         resource.get_recent_clicks(limit=10)
         resource._http.get.assert_called_once_with(
-            "/api/user/recent-clicks", params={"limit": 10}
+            "/api/user/clicks/recent", params={"limit": 10}
+        )
+
+    def test_get_recent_clicks_with_since(self):
+        resource = _make_resource()
+        resource._http.get.return_value = []
+        resource.get_recent_clicks(limit=10, since="2026-01-01T00:00:00Z")
+        resource._http.get.assert_called_once_with(
+            "/api/user/clicks/recent",
+            params={"limit": 10, "since": "2026-01-01T00:00:00Z"},
         )
 
     def test_get_recent_clicks_returns_list(self):
@@ -84,10 +93,12 @@ class TestAnalyticsUnit:
         assert isinstance(result, list)
         assert all(isinstance(c, ClickEvent) for c in result)
 
-    def test_get_recent_clicks_handles_wrapped_response(self):
+    def test_get_recent_clicks_handles_clicks_count_envelope(self):
+        """Live shape confirmed on staging: {"clicks": [...], "count": N}."""
         resource = _make_resource()
         resource._http.get.return_value = {
-            "clicks": [{"timestamp": "2026-01-01T00:00:00Z"}]
+            "clicks": [{"timestamp": "2026-01-01T00:00:00Z"}],
+            "count": 1,
         }
         result = resource.get_recent_clicks()
         assert len(result) == 1

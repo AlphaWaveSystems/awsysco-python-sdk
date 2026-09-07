@@ -62,7 +62,9 @@ class FoldersResource:
             body["name"] = name
         if color is not None:
             body["color"] = color
-        data = self._http.patch(f"/api/v1/folders/{folder_id}", json=body)
+        # No /api/v1 alias exists for this route on the platform — only the
+        # unversioned path works (confirmed live: the v1 path 404s).
+        data = self._http.patch(f"/api/folders/{folder_id}", json=body)
         return Folder.model_validate(data)
 
     def delete(self, folder_id: str) -> None:

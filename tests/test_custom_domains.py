@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from awsysco.exceptions import AwsysForbiddenError
 from awsysco.models import CustomDomain
 from awsysco.resources.custom_domains import CustomDomainsResource
 
@@ -50,18 +51,13 @@ class TestCustomDomains:
             "/api/user/domains/links.example.com/verify"
         )
 
-    def test_activate_calls_correct_endpoint(self):
+    def test_activate_is_deprecated_and_forbidden(self):
+        """activate() is Firebase-only (ADR-006) — always raises, never hits the network."""
         resource = _make_resource()
-        resource.activate("links.example.com")
-        resource._http.post.assert_called_once_with(
-            "/api/user/domains/links.example.com/activate"
-        )
-
-    def test_activate_returns_custom_domain(self):
-        resource = _make_resource()
-        result = resource.activate("links.example.com")
-        assert isinstance(result, CustomDomain)
-        assert result.domain == "links.example.com"
+        with pytest.deprecated_call():
+            with pytest.raises(AwsysForbiddenError):
+                resource.activate("links.example.com")
+        resource._http.post.assert_not_called()
 
     def test_update_sends_is_default(self):
         resource = _make_resource()

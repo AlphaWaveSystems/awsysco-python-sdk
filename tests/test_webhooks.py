@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from awsysco.models import Webhook
 from awsysco.resources.webhooks import WebhooksResource
@@ -17,6 +16,12 @@ _WEBHOOK_DATA = {
     "name": "My Webhook",
     "enabled": True,
     "createdAt": "2026-01-01T00:00:00Z",
+}
+
+_LEGACY_WEBHOOK_DATA = {
+    "id": "wh0",
+    "url": "https://legacy.example/hook",
+    "events": ["link.click"],
 }
 
 
@@ -39,7 +44,22 @@ class TestWebhooks:
     def test_list_calls_endpoint(self):
         resource = _make_resource()
         resource.list()
-        resource._http.get.assert_called_once_with("/api/webhooks")
+        resource._http.get.assert_called_once_with("/api/v1/webhooks")
+
+    def test_webhook_enabled_field(self):
+        resource = _make_resource()
+        result = resource.create("https://example.com/hook", ["link.created"])
+        assert result.enabled is True
+
+    def test_legacy_webhook_missing_fields_default_to_none(self):
+        """Legacy webhook docs on the platform lack enabled/secret/etc. entirely."""
+        http = MagicMock()
+        http.patch.return_value = _LEGACY_WEBHOOK_DATA
+        resource = WebhooksResource(http)
+        result = resource.update("wh0", name="Renamed")
+        assert result.enabled is None
+        assert result.secret is None
+        assert result.failure_count is None
 
     def test_create_returns_webhook(self):
         resource = _make_resource()
@@ -69,6 +89,7 @@ class TestWebhooks:
         assert "secret" not in body
 
     def test_update_calls_patch(self):
+        # No /api/v1 alias exists for update on the platform; wire key is "enabled".
         resource = _make_resource()
         resource.update("wh1", enabled=False)
         resource._http.patch.assert_called_once_with(
@@ -83,12 +104,17 @@ class TestWebhooks:
     def test_delete_calls_endpoint(self):
         resource = _make_resource()
         resource.delete("wh1")
-        resource._http.delete.assert_called_once_with("/api/webhooks/wh1")
+        resource._http.delete.assert_called_once_with("/api/v1/webhooks/wh1")
 
     def test_test_calls_correct_endpoint(self):
         resource = _make_resource()
         resource._http.post.return_value = {"sent": True}
         resource.test("wh1", "link.created")
         resource._http.post.assert_called_once_with(
-            "/api/webhooks/wh1/test", json={"eventType": "link.created"}
+            "/api/v1/webhooks/wh1/test", json={"eventType": "link.created"}
         )
+
+    def test_repr_never_contains_raw_secret(self):
+        webhook = Webhook.model_validate({"id": "wh1", "secret": "whsec_supersecret"})
+        assert "whsec_supersecret" not in repr(webhook)
+        assert "<redacted>" in repr(webhook)

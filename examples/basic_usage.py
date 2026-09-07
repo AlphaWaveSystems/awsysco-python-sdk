@@ -8,7 +8,7 @@ Set AWSYS_API_KEY in your environment before running:
 
 import os
 
-from awsysco import Client, AwsysNotFoundError
+from awsysco import Client
 
 api_key = os.environ.get("AWSYS_API_KEY")
 if not api_key:
