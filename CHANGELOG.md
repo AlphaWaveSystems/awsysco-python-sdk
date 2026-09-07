@@ -159,6 +159,20 @@ changes — see below.
   `repr(AsyncHttpClient)`.
 - See `SECURITY-REVIEW.md` for the full dependency audit and finding list.
 
+### Known limitations
+- The sync/async retry loops (`_http.py`/`_async_http.py`, `_request`/`get_text`
+  each) share their retry-*decision* logic (`_transport.py`'s `is_idempotent`,
+  `is_retry_after_excessive`, `get_retry_after`, `compute_delay`) but not the
+  surrounding loop structure itself — there are still 4 near-identical
+  `while True: try/except ... continue` blocks. An independent review flagged
+  this as the source of a prior drift (the `get_text` variants had fallen out
+  of sync with `_request`'s retry conditions before this pass). The
+  correctness-relevant duplication is now eliminated (all four call the same
+  shared helpers), so a repeat of that specific drift shouldn't recur, but a
+  full structural consolidation (one shared loop, parameterized over
+  json-vs-text response handling and sync-vs-async) was deferred as a larger,
+  riskier refactor for marginal further benefit. Tracked as follow-up debt.
+
 ## [1.3.0] — 2026-07-19
 Parity resources: `usage`, `web2app`, `imports` (Phase "parity").
 
