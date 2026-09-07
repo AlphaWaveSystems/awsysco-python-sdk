@@ -98,7 +98,7 @@ class LinksResource:
         Returns:
             A LinkList containing links and pagination info.
         """
-        limit = min(limit, _MAX_PAGE_SIZE)
+        limit = max(1, min(limit, _MAX_PAGE_SIZE))
         data = self._http.get("/api/v1/links", params={"limit": limit, "offset": offset})
         return LinkList.model_validate(data)
 
@@ -115,7 +115,7 @@ class LinksResource:
         Yields:
             Each Link across every page.
         """
-        limit = min(limit, _MAX_PAGE_SIZE)
+        limit = max(1, min(limit, _MAX_PAGE_SIZE))
         offset = 0
         while True:
             page = self.list(limit=limit, offset=offset)

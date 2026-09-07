@@ -117,4 +117,11 @@ class TestWebhooks:
     def test_repr_never_contains_raw_secret(self):
         webhook = Webhook.model_validate({"id": "wh1", "secret": "whsec_supersecret"})
         assert "whsec_supersecret" not in repr(webhook)
-        assert "<redacted>" in repr(webhook)
+
+    def test_str_never_contains_raw_secret(self):
+        """str()/f-string formatting has its own code path from repr() in pydantic —
+        this must be checked independently (a prior fix only covered __repr__)."""
+        webhook = Webhook.model_validate({"id": "wh1", "secret": "whsec_supersecret"})
+        assert "whsec_supersecret" not in str(webhook)
+        assert "whsec_supersecret" not in f"{webhook}"
+        assert "whsec_supersecret" not in "%s" % webhook

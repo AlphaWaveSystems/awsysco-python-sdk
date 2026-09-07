@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "awsysco"
-version = "1.4.0"
+dynamic = ["version"]
 description = "Official Python SDK for the AWSYS.CO URL Shortener API"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -56,6 +56,12 @@ markers = [
 [tool.coverage.run]
 source = ["awsysco"]
 
+[tool.hatch.version]
+# Single source of truth for the version: awsysco/_version.py. hatchling reads
+# the `__version__ = "..."` assignment from this file at build time, so there's
+# no second, manually-synced copy in this file to drift out of step.
+path = "awsysco/_version.py"
+
 [tool.ruff]
 target-version = "py39"
 line-length = 100
@@ -67,6 +73,12 @@ line-length = 100
 select = ["E4", "E7", "E9", "F"]
 
 [tool.mypy]
+# Ideally this would match requires-python (3.9). It's pinned to 3.10 instead
+# because checking as 3.9 makes mypy follow into a transitive dependency's own
+# source (anyio) and fail on a match-statement there (3.10+ syntax) — a false
+# positive against our own code, not a real compatibility issue with 3.9 (the
+# CI matrix actually runs pytest against a real 3.9 interpreter, which is the
+# check that matters for runtime compatibility).
 python_version = "3.10"
 check_untyped_defs = true
 warn_redundant_casts = true

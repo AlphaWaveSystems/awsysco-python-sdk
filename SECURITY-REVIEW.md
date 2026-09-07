@@ -36,19 +36,46 @@ with no validation. **Fixed**: `resolve_base_url()` now rejects anything without
 an `http://`/`https://` scheme (raises `AwsysConfigurationError`) and warns on
 plain `http://`. Verified by `tests/test_config.py::TestBaseUrlResolution`.
 
-### Low — Webhook signing secret was not redacted from model reprs (fixed)
-`Webhook.secret` (the webhook's HMAC signing secret) was a plain model field with
-no redaction — `print(webhook)`/`repr(webhook)`/an uncaught exception embedding the
-model would leak it into logs. **Fixed**: `Webhook.__repr__` masks `secret` as
-`<redacted>`. Verified by `tests/test_webhooks.py::test_repr_never_contains_raw_secret`.
+### Medium — Webhook signing secret leaked via `str()`/f-strings (fixed)
+`Webhook.secret` (the webhook's HMAC signing secret) was a plain model field.
+An earlier pass in this same review cycle added a custom `__repr__` that masked
+it — but pydantic's default `__str__` is generated independently of a subclass's
+`__repr__` override, so `str(webhook)`/`f"{webhook}"`/`"%s" % webhook`/logging
+calls that implicitly stringify (not `repr()`) still leaked the raw secret. An
+independent review of this PR caught it before merge. **Fixed properly**:
+`secret` is now declared `Field(repr=False)` (excludes it from pydantic's own
+`__repr_args__`, which backs both representations), and `__str__` is explicitly
+aliased to the same `__repr__` implementation so there's no second code path to
+drift. Verified by `tests/test_webhooks.py::test_repr_never_contains_raw_secret`
+and `test_str_never_contains_raw_secret`.
 
 ### Low — stale, incorrect User-Agent version string (fixed)
 Both transports hardcoded `User-Agent: awsysco-python-sdk/1.0.0` regardless of the
 actual installed version (1.3.0 at the time, now 1.4.0) — not a vulnerability, but
 a support/telemetry accuracy issue (the platform can't reliably tell which SDK
 version is making a request from its own logs). **Fixed**: derived from
-`awsysco.__version__`; a test (`test_pyproject_version_matches_dunder_version`)
-prevents the two from drifting again.
+`awsysco.__version__`. The version itself now has a single source of truth
+(`awsysco/_version.py`, read by hatchling via `[tool.hatch.version]`) rather than
+a second, manually-synced copy in `pyproject.toml` — an independent review of
+this PR caught that the original two-copy design could drift; a test
+(`test_pyproject_declares_dynamic_version_from_version_py`) guards the config.
+
+### Informational — `vars()`/`__dict__` introspection still shows the raw key
+`repr()`/`str()`/f-string formatting of the client, transport, and every resource
+object are covered (verified for `client.links`, `.folders`, `.webhooks`,
+`.profile`, `.affiliate`, and both transports). Deliberately calling
+`vars(client._http)` or `client._http.__dict__`, however, still returns the raw
+`_api_key` — as does reading `client._http._client.headers["Authorization"]`
+directly. This is accepted as an inherent limitation rather than a gap to close:
+the key must exist unredacted somewhere in the live object graph to actually be
+usable for requests (it's literally sitting in the underlying `httpx.Client`'s
+real request headers), so no amount of `__repr__`/`__str__` polish changes what's
+reachable by someone willing to inspect object internals directly — and anyone
+with that level of access to a live client object already has arbitrary code
+execution in the process, at which point the credential is exposed regardless.
+The redaction guarantee here is specifically about the common *accidental* leak
+paths (printing/logging a client or resource object, an exception message,
+str-formatting), not about withstanding deliberate introspection.
 
 ### Informational — exception `.raw` retains the full response body
 `AwsysError.raw` intentionally stores the parsed (or raw-text) response body for

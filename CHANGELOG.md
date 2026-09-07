@@ -95,6 +95,55 @@ changes — see below.
   Firebase-auth-only and always 401s for an API key. Now raises
   `AwsysForbiddenError` immediately (with a `DeprecationWarning`) without a
   network round-trip.
+- `tests/conftest.py`'s `pytest_runtest_call` hook was a plain function, not a
+  pytest hookwrapper — since it called `item.runtest()` itself, pytest's own
+  internal call to the same hookspec ran again alongside it, so **every test in
+  the suite silently executed twice per run**, including live calls against
+  staging. Fixed by converting it to a proper `@pytest.hookimpl(wrapper=True)`.
+- **`LinkList.has_more`** was always `None` — the platform nests pagination
+  under `pagination: {limit, offset, hasMore}`, not at the top level, so the
+  field's auto-generated alias never matched anything real. This silently broke
+  `links.list_all()`'s primary stop condition; the iterator only ever worked by
+  accident, via its secondary "short page" length check. A before-validator now
+  hoists `pagination.hasMore`/`.limit`/`.offset` up before field validation.
+- **`links.list_all(limit=0)`** (or a negative limit) could loop forever — the
+  limit was clamped with `min(limit, 100)` but no lower bound, so a `0`/negative
+  limit reached the platform as-is and the "page shorter than limit" stop
+  condition (`len(page.links) < limit`) could never fire. Now clamped to `>=1`.
+- **`Webhook.secret` leaked via `str()`/f-strings.** An earlier fix in this same
+  PR added a custom `__repr__` that masked it, but pydantic generates `__str__`
+  independently of a subclass's `__repr__` — so `str(webhook)`/`f"{webhook}"`/
+  `logging.info("%s", webhook)` still leaked the raw secret. An independent
+  review caught it before merge. Fixed properly via `Field(repr=False)` (which
+  backs both representations) plus `__str__ = __repr__`.
+- The Firestore-timestamp coercion validator could itself raise: a non-numeric
+  `nanoseconds` value (e.g. `{"seconds": 1, "nanoseconds": "q"}`) hit an
+  uncaught `TypeError`, and an out-of-range `seconds` value (huge, deeply
+  negative, or non-numeric) that failed conversion left the *raw dict* in place,
+  which then failed downstream field validation (a dict into a `str` field) —
+  the "never raise" guarantee didn't actually hold for either case. Both are now
+  caught and the field is stringified on any conversion failure.
+- Retry-After capping (raise immediately rather than sleep, for a value beyond
+  the 30s cap or non-finite) previously only applied to 429s — a retryable 5xx
+  with an oversized `Retry-After` (e.g. `503` + `Retry-After: 3600`) slept for
+  the full, uncapped duration instead. Also fixed: a `Retry-After: nan` was
+  silently clamped to `0.0` by an unconditional `max(0.0, ...)`, which caused it
+  to sleep almost instantly and retry rather than being recognized as
+  non-finite and raising immediately.
+- `qr.get_url()`'s default `bg_color` was `"FFFFFF"` (uppercase); the platform's
+  own convention (and the contract fixture) uses lowercase — aligned to
+  `"ffffff"` for consistency (purely cosmetic; hex color parsing is
+  case-insensitive either way).
+- `pyproject.toml` and `awsysco/_version.py` each held their own copy of the
+  version string, requiring a manual sync on every release. `pyproject.toml`
+  now declares `dynamic = ["version"]` and reads it from `_version.py` via
+  hatchling's `[tool.hatch.version]`, so there's a single source of truth.
+- `[tool.ruff.lint]` had no explicit `select`, so `ruff check .` picked up
+  whatever ruff's bare default was for whatever version got installed — ruff
+  0.16 started flagging import-sort (I001) issues that 0.15 (already installed
+  locally) didn't, breaking the PR's first CI run. Pinned explicitly to the
+  classic default (`E4`, `E7`, `E9`, `F`) so a future ruff upgrade can't change
+  what's enforced out from under CI.
 
 ### Deprecated
 - `custom_domains.activate()` — Firebase-only route, unreachable with an API key.

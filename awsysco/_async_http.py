@@ -12,6 +12,7 @@ from ._transport import (
     DEFAULT_MAX_RETRIES,
     RETRYABLE_SERVER_STATUSES,
     compute_delay,
+    get_retry_after,
     is_idempotent,
     is_quota_rate_limit,
     is_retry_after_excessive,
@@ -103,6 +104,7 @@ class AsyncHttpClient:
                 response.status_code in RETRYABLE_SERVER_STATUSES
                 and is_idempotent(method)
                 and attempt < self._max_retries
+                and not is_retry_after_excessive(get_retry_after(response))
             ):
                 await asyncio.sleep(compute_delay(response, attempt))
                 attempt += 1
@@ -173,7 +175,11 @@ class AsyncHttpClient:
                 attempt += 1
                 continue
 
-            if response.status_code in RETRYABLE_SERVER_STATUSES and attempt < self._max_retries:
+            if (
+                response.status_code in RETRYABLE_SERVER_STATUSES
+                and attempt < self._max_retries
+                and not is_retry_after_excessive(get_retry_after(response))
+            ):
                 await asyncio.sleep(compute_delay(response, attempt))
                 attempt += 1
                 continue

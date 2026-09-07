@@ -97,6 +97,30 @@ class TestRedaction:
         client = Client(api_key="awsys_supersecretvalue")
         assert "supersecretvalue" not in repr(client._http)
 
+    def test_http_client_str_never_contains_full_key(self):
+        """str() falls back to __repr__ for a plain (non-pydantic) class only if
+        __str__ isn't independently defined — confirm that's actually true here,
+        not assumed."""
+        client = Client(api_key="awsys_supersecretvalue")
+        assert "supersecretvalue" not in str(client._http)
+        assert "supersecretvalue" not in f"{client._http}"
+
+    def test_resource_object_repr_never_contains_full_key(self):
+        """Every resource attached to the client (client.links, client.folders, …)
+        must not leak the key either — even though none of them override __repr__,
+        confirm the default object repr (class + id only) stays that way rather
+        than assuming it can never regress (e.g. from a future __repr__ that
+        dumps __dict__)."""
+        client = Client(api_key="awsys_supersecretvalue")
+        for name in ("links", "folders", "webhooks", "profile", "affiliate"):
+            resource = getattr(client, name)
+            assert "supersecretvalue" not in repr(resource)
+            assert "supersecretvalue" not in str(resource)
+
+    def test_async_http_client_str_never_contains_full_key(self):
+        client = AsyncClient(api_key="awsys_supersecretvalue")
+        assert "supersecretvalue" not in str(client._http)
+
 
 class TestUserAgent:
     def test_user_agent_matches_contract_pattern(self):
@@ -109,14 +133,26 @@ class TestUserAgent:
         ua = client._http._client.headers["User-Agent"]
         assert awsysco.__version__ in ua
 
-    def test_pyproject_version_matches_dunder_version(self):
+    def test_pyproject_declares_dynamic_version_from_version_py(self):
+        """The version has a single source of truth (awsysco/_version.py, read by
+        hatchling via [tool.hatch.version].path) — pyproject.toml must declare
+        `dynamic = ["version"]` and must NOT also hardcode a static `version =`
+        under [project], or the two could drift out of sync again."""
         import pathlib
 
         pyproject = pathlib.Path(__file__).resolve().parents[1] / "pyproject.toml"
         text = pyproject.read_text()
-        match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
-        assert match is not None, "could not find version in pyproject.toml"
-        assert match.group(1) == awsysco.__version__
+        assert re.search(r'(?m)^dynamic\s*=\s*\[.*"version".*\]', text), (
+            "pyproject.toml must declare dynamic = [\"version\"]"
+        )
+        project_section = text.split("[project]", 1)[1].split("\n[", 1)[0]
+        assert not re.search(r'(?m)^version\s*=', project_section), (
+            "pyproject.toml must not also hardcode a static version under [project] "
+            "— that would reintroduce the dual-source-of-truth drift"
+        )
+        # The actual build→wheel-version resolution is verified manually (and via
+        # the release checklist) with `python -m build` — not re-run here as a
+        # subprocess on every unit-test invocation, to keep this suite fast.
 
 
 class TestPerCallTimeout:

@@ -182,6 +182,23 @@ class TestLinksListAll:
         list(resource.list_all(limit=500))
         assert resource._http.get.call_args[1]["params"]["limit"] == 100
 
+    def test_list_all_clamps_zero_and_negative_limit(self):
+        """limit=0 (or negative) must clamp to >=1 and terminate — a bare
+        min(limit, 100) with no lower bound would send limit=0 to the platform,
+        and if a page ever came back non-empty, loop forever (`len(page.links) <
+        0` is never true, so the short-page stop condition could never fire)."""
+        resource = _make_resource()
+        resource._http.get.return_value = {"links": []}
+        results = list(resource.list_all(limit=0))
+        assert resource._http.get.call_args[1]["params"]["limit"] == 1
+        assert results == []
+        assert resource._http.get.call_count == 1  # terminates after one page
+
+        resource2 = _make_resource()
+        resource2._http.get.return_value = {"links": []}
+        list(resource2.list_all(limit=-5))
+        assert resource2._http.get.call_args[1]["params"]["limit"] == 1
+
 
 # ---------------------------------------------------------------------------
 # Integration tests — require AWSYS_API_KEY

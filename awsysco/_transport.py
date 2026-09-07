@@ -42,18 +42,31 @@ def is_idempotent(method: str) -> bool:
 
 
 def _parse_retry_after(value: Optional[str]) -> Optional[float]:
-    """Parse a ``Retry-After`` header value — either delta-seconds or an HTTP-date."""
+    """Parse a ``Retry-After`` header value — either delta-seconds or an HTTP-date.
+
+    A non-finite delta (``nan``/``inf``) is returned as-is, NOT clamped to ``0.0`` —
+    clamping it would silently turn "don't know how long to wait" into "wait
+    (almost) no time and retry", when the caller should instead treat it as
+    excessive (see :func:`is_retry_after_excessive`) and raise immediately.
+    """
     if not value:
         return None
     try:
-        return max(0.0, float(value))
+        parsed = float(value)
     except ValueError:
-        pass
+        parsed = None
+    if parsed is not None:
+        return parsed if not math.isfinite(parsed) else max(0.0, parsed)
     try:
         dt = parsedate_to_datetime(value)
         return max(0.0, dt.timestamp() - _now())
     except (TypeError, ValueError):
         return None
+
+
+def get_retry_after(response: "httpx.Response") -> Optional[float]:
+    """Parse the ``Retry-After`` header off a response, if present."""
+    return _parse_retry_after(response.headers.get("Retry-After"))
 
 
 def parse_error(response: "httpx.Response") -> AwsysError:
@@ -140,12 +153,15 @@ def is_retry_after_excessive(retry_after: Optional[float]) -> bool:
 def compute_delay(response: Optional["httpx.Response"], attempt: int) -> float:
     """Backoff delay for retry ``attempt`` (0-indexed), with full jitter.
 
-    Uses the ``Retry-After`` header when present, otherwise ``1s * 2^attempt`` capped at
-    30s. Full jitter: the actual sleep is a random value in ``[0, computed_delay]``.
+    Uses the ``Retry-After`` header when present (capped at 30s — callers are
+    expected to have already checked :func:`is_retry_after_excessive` and raised
+    instead of calling this at all when it's excessive; the cap here is a second,
+    defensive layer), otherwise ``1s * 2^attempt`` capped at 30s. Full jitter: the
+    actual sleep is a random value in ``[0, computed_delay]``.
     """
-    retry_after = _parse_retry_after(response.headers.get("Retry-After")) if response is not None else None
-    if retry_after is not None:
-        base = retry_after
+    retry_after = get_retry_after(response) if response is not None else None
+    if retry_after is not None and math.isfinite(retry_after):
+        base = min(retry_after, _RETRY_MAX_DELAY)
     else:
         base = min(_RETRY_BASE_DELAY * (2**attempt), _RETRY_MAX_DELAY)
     return random.uniform(0, base)

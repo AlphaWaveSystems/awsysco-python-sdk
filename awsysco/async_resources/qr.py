@@ -14,7 +14,7 @@ class AsyncQRResource:
         self._http = http
         self._base_url = http.base_url
 
-    def get_url(self, short_code: str, *, size: int = 300, color: str = "000000", bg_color: str = "FFFFFF") -> str:
+    def get_url(self, short_code: str, *, size: int = 300, color: str = "000000", bg_color: str = "ffffff") -> str:
         params = urlencode({"size": size, "color": color, "bgColor": bg_color})
         return f"{self._base_url}/api/qr/{short_code}?{params}"
 

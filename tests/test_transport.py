@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import http.client
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -331,6 +331,42 @@ class TestRetryAfterCapping:
         assert mock_request.call_count == 1  # no retry attempted
         assert slept == []  # never slept
         assert exc_info.value.retry_after == 999.0  # still reported to the caller
+
+    def test_sync_client_raises_immediately_on_excessive_retry_after_503(self, monkeypatch):
+        """err_503_retry_after_oversized: a retryable 5xx with an oversized
+        Retry-After must raise immediately too, not just 429 — this path had no
+        excessiveness check at all before an independent review caught it."""
+        client = HttpClient(api_key="awsys_x", base_url="https://awsys.co", max_retries=3)
+        resp = _FakeResponse(
+            503, json_body={"error": True, "message": "unavailable"}, headers={"Retry-After": "3600"}
+        )
+        mock_request = MagicMock(return_value=resp)
+        monkeypatch.setattr(client._client, "request", mock_request)
+        slept = []
+        monkeypatch.setattr("awsysco._http.time.sleep", lambda d: slept.append(d))
+        with pytest.raises(AwsysServerError):
+            client.get("/api/v1/links")
+        assert mock_request.call_count == 1
+        assert slept == []
+
+    def test_async_client_raises_immediately_on_excessive_retry_after_503(self, monkeypatch):
+        async def _run():
+            client = AsyncHttpClient(api_key="awsys_x", base_url="https://awsys.co", max_retries=3)
+            resp = _FakeResponse(
+                503, json_body={"error": True, "message": "unavailable"}, headers={"Retry-After": "3600"}
+            )
+
+            async def fake_request(*args, **kwargs):
+                return resp
+
+            monkeypatch.setattr(client._client, "request", fake_request)
+            sleep_mock = AsyncMock()
+            monkeypatch.setattr("awsysco._async_http.asyncio.sleep", sleep_mock)
+            with pytest.raises(AwsysServerError):
+                await client.get("/api/v1/links")
+            sleep_mock.assert_not_awaited()
+
+        asyncio.run(_run())
 
 
 # ---------------------------------------------------------------------------

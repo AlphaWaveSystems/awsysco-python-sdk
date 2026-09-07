@@ -760,6 +760,7 @@ _RETRY_BEHAVIOR_IDS = {
     "err_429_exhausted",
     "err_503_get_retried",
     "err_503_post_not_retried",
+    "err_503_retry_after_oversized",
 }
 # expect_error is not an AwsysError subclass name for these — each is a distinct,
 # already-covered-elsewhere case handled specially rather than through parse_error.
@@ -852,6 +853,17 @@ _BEHAVIOR_COVERAGE = {
         "/ TestBaseUrlResolution::test_warns_on_plain_http(_only_once...)"
     ),
     "release_tag_matches_version": ".github/workflows/publish.yml (Verify tag matches package version step)",
+    "iterator_links_limit_zero": "tests/test_links.py::TestLinksListAll::test_list_all_clamps_zero_and_negative_limit",
+    "redaction_str": (
+        "tests/test_config.py::TestRedaction (str/f-string cases) / "
+        "tests/test_webhooks.py::test_str_never_contains_raw_secret"
+    ),
+    "timestamp_never_raises": (
+        "tests/test_models.py::TestTimestampCoercion (test_non_numeric_nanoseconds_never_raises / "
+        "test_huge_seconds_never_raises / test_very_negative_seconds_never_raises / "
+        "test_list_valued_seconds_never_raises)"
+    ),
+    "links_list_has_more_from_pagination": "tests/test_models.py::TestLinkListPagination",
 }
 
 

@@ -38,7 +38,7 @@ jobs:
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          PKG_VERSION=$(python3 -c "import re; print(re.search(r'(?m)^version\s*=\s*\"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
+          PKG_VERSION=$(python3 -c "import re; print(re.search(r'(?m)^__version__\s*=\s*\"([^\"]+)\"', open('awsysco/_version.py').read()).group(1))")
           if [ "$TAG_NAME" != "v$PKG_VERSION" ]; then
             echo "Tag '$TAG_NAME' does not match package version 'v$PKG_VERSION' — refusing to publish."
             exit 1

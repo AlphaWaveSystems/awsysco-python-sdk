@@ -1,6 +1,6 @@
 {
  "$schema": "awsys-sdk-contract/1",
- "version": "1.0.6",
+ "version": "1.0.8",
  "platformBaseline": "2026-09",
  "baseUrl": "https://awsys.co",
  "auth": {
@@ -2051,6 +2051,21 @@
    "body": null,
    "expect_error": "CancelledError",
    "note": "caller-initiated cancellation (signal/ctx) must not be reported as TimeoutError; idiomatic: TS distinct error or rethrown AbortError, Python asyncio.CancelledError passthrough, Go ctx.Err()"
+  },
+  {
+   "id": "err_503_retry_after_oversized",
+   "status": 503,
+   "body": {
+    "error": true,
+    "message": "unavailable"
+   },
+   "headers": {
+    "Retry-After": "3600"
+   },
+   "method": "GET",
+   "expect_error": "ServerError",
+   "retry": false,
+   "note": "Retry-After above the 30 s cap on a retryable 5xx \u2192 raise immediately, never sleep"
   }
  ],
  "behaviors": [
@@ -2080,7 +2095,7 @@
   },
   {
    "id": "timestamp_variants",
-   "assert": "ISO string and {_seconds,_nanoseconds} both parse; garbage keeps raw string"
+   "assert": "ISO string and {_seconds,_nanoseconds} both parse; garbage keeps raw string; normalization is applied automatically to timestamp fields on real responses, not only via an exported helper"
   },
   {
    "id": "iterator_links",
@@ -2097,6 +2112,22 @@
   {
    "id": "release_tag_matches_version",
    "assert": "publish/release workflow fails if the git tag does not equal v<package version>"
+  },
+  {
+   "id": "iterator_links_limit_zero",
+   "assert": "list_all/listAll/Iter with limit 0 or negative clamps to \u22651 and terminates"
+  },
+  {
+   "id": "redaction_str",
+   "assert": "str()/print/f-string/%s formatting (not only repr/inspect) of client, config, errors AND models carrying secrets (Webhook.secret) never contain the API key or secret; every object reachable from the client (resources, transport/http client) is covered \u2014 TS `private` is erased at runtime and Go %+v follows pointers"
+  },
+  {
+   "id": "timestamp_never_raises",
+   "assert": "timestamp normalizer never raises for {seconds:1,nanoseconds:'q'}, {_seconds:1e300}, {seconds:-1e14}, {seconds:[1]} \u2014 field keeps a string form of the raw value"
+  },
+  {
+   "id": "links_list_has_more_from_pagination",
+   "assert": "list() exposes hasMore read from pagination.hasMore (True/False), not from a top-level key"
   }
  ]
 }

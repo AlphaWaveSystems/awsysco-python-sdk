@@ -62,7 +62,7 @@ class AsyncLinksResource:
         return Link.model_validate(data)
 
     async def list(self, *, limit: int = 20, offset: int = 0) -> LinkList:
-        limit = min(limit, _MAX_PAGE_SIZE)
+        limit = max(1, min(limit, _MAX_PAGE_SIZE))
         data = await self._http.get("/api/v1/links", params={"limit": limit, "offset": offset})
         return LinkList.model_validate(data)
 
@@ -72,7 +72,7 @@ class AsyncLinksResource:
         Stops when the platform reports ``has_more=False``, or a page comes back
         shorter than ``limit`` (including empty).
         """
-        limit = min(limit, _MAX_PAGE_SIZE)
+        limit = max(1, min(limit, _MAX_PAGE_SIZE))
         offset = 0
         while True:
             page = await self.list(limit=limit, offset=offset)
