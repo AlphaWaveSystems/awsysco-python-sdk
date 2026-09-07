@@ -34,10 +34,13 @@ def _make_resource():
 
 class TestFoldersUnit:
     def test_update_calls_patch_endpoint(self):
+        # No /api/v1 alias exists for this route on the platform — only the
+        # unversioned path works (confirmed live against staging; see ADR-011
+        # in docs/sdk-decision-log.md).
         resource = _make_resource()
         resource.update("folder1", name="Renamed")
         resource._http.patch.assert_called_once_with(
-            "/api/v1/folders/folder1", json={"name": "Renamed"}
+            "/api/folders/folder1", json={"name": "Renamed"}
         )
 
     def test_update_sends_color(self):
@@ -129,4 +132,16 @@ class TestFolders:
     def test_delete_folder(self, client: Client) -> None:
         folder = client.folders.create(_folder_name())
         assert folder.id is not None
+        client.folders.delete(folder.id)
+
+    def test_update_folder_live(self, client: Client) -> None:
+        """Regression test for ADR-011: update() must hit the unversioned route."""
+        folder = client.folders.create(_folder_name())
+        assert folder.id is not None
+
+        updated = client.folders.update(folder.id, name="Renamed Live", color="#123456")
+        assert isinstance(updated, Folder)
+        assert updated.name == "Renamed Live"
+        assert updated.color == "#123456"
+
         client.folders.delete(folder.id)

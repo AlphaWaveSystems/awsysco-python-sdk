@@ -2,10 +2,53 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+
+
+def _coerce_firestore_timestamps(data: Any) -> Any:
+    """Convert any top-level Firestore ``{_seconds,_nanoseconds}``/``{seconds,nanoseconds}``
+    value to an ISO-8601 string, in place, before field validation runs.
+
+    Per the cross-SDK contract, timestamp fields must accept both plain ISO-8601
+    strings and Firestore's raw timestamp shape. Fields stay typed as ``Optional[str]``
+    (upgrading to a native ``datetime`` would be a breaking type change for a minor
+    release) — an unrecognized shape is left untouched rather than raising, since a
+    parse failure here must never crash model validation.
+    """
+    if not isinstance(data, dict):
+        return data
+    result = dict(data)
+    for key, value in data.items():
+        if not isinstance(value, dict):
+            continue
+        # Only treat this as an *attempted* timestamp if a seconds-like key is
+        # actually present — a dict with neither key is presumed unrelated (e.g.
+        # a genuinely dict-typed field like MeResponse.features) and left alone.
+        if "_seconds" not in value and "seconds" not in value:
+            continue
+        seconds = value.get("_seconds", value.get("seconds"))
+        nanos = value.get("_nanoseconds", value.get("nanoseconds", 0))
+        try:
+            if not isinstance(seconds, (int, float)) or isinstance(seconds, bool):
+                raise TypeError(f"non-numeric seconds: {seconds!r}")
+            if not isinstance(nanos, (int, float)) or isinstance(nanos, bool):
+                nanos = 0
+            dt = datetime.fromtimestamp(seconds + nanos / 1e9, tz=timezone.utc)
+            result[key] = dt.isoformat().replace("+00:00", "Z")
+        except (OverflowError, OSError, ValueError, TypeError):
+            # A shape that declared itself a Firestore timestamp (has a seconds
+            # key) but doesn't actually convert (huge/negative/non-numeric
+            # seconds, non-numeric nanoseconds, etc.) must still never crash
+            # model validation — but leaving the raw dict in place would just
+            # move the crash downstream into field validation (a dict into an
+            # Optional[str] field). Stringify it instead so the field always
+            # gets a string.
+            result[key] = str(value)
+    return result
 
 __all__ = [
     "Link",
@@ -42,6 +85,7 @@ __all__ = [
     "UTMBreakdown",
     "UpgradeForMore",
     "AggregateAnalytics",
+    "Profile",
 ]
 
 
@@ -53,6 +97,11 @@ class _CamelModel(BaseModel):
         populate_by_name=True,
         extra="allow",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_timestamps(cls, data: Any) -> Any:
+        return _coerce_firestore_timestamps(data)
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +115,8 @@ class Link(_CamelModel):
     id: Optional[str] = None
     short_url: Optional[str] = None
     short_code: Optional[str] = None
+    full_path: Optional[str] = None
+    namespace: Optional[str] = None
     long: Optional[str] = None
     clicks: Optional[int] = None
     created: Optional[str] = None
@@ -76,11 +127,33 @@ class Link(_CamelModel):
 
 
 class LinkList(_CamelModel):
-    """Paginated list of links."""
+    """Paginated list of links.
+
+    The platform nests pagination info under a ``pagination`` object
+    (``{links: [...], pagination: {limit, offset, hasMore}}``), not at the top
+    level — the before-validator below hoists those fields up so ``has_more``
+    (and ``limit``/``offset``) actually populate instead of always being ``None``.
+    """
 
     links: List[Link] = Field(default_factory=list)
     total: Optional[int] = None
     has_more: Optional[bool] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _hoist_pagination(cls, data: Any) -> Any:
+        if isinstance(data, dict) and isinstance(data.get("pagination"), dict):
+            # pagination.* is the only source of truth once present — it must
+            # win over any stray top-level key of the same name, not just fill
+            # one in if absent.
+            pagination = data["pagination"]
+            data = dict(data)
+            data["hasMore"] = pagination.get("hasMore")
+            data["limit"] = pagination.get("limit")
+            data["offset"] = pagination.get("offset")
+        return data
 
 
 # ---------------------------------------------------------------------------
@@ -219,12 +292,18 @@ class QRSettings(_CamelModel):
 
 
 class TrustScoreResult(_CamelModel):
-    """Result of a URL trust/safety scan."""
+    """Result of a URL trust/safety scan.
+
+    Wire keys are ``shortCode``/``trustScore``/``trustStatus`` — ``short``/``long``
+    are kept as separate (currently unpopulated) fields since the platform doesn't
+    send them under those names; removing them would be a breaking change.
+    """
 
     short: Optional[str] = None
     long: Optional[str] = None
-    score: Optional[float] = None
-    status: Optional[str] = None
+    short_code: Optional[str] = None
+    score: Optional[float] = Field(default=None, alias="trustScore")
+    status: Optional[str] = Field(default=None, alias="trustStatus")
     threats: Optional[List[str]] = None
     scanned_at: Optional[str] = None
 
@@ -275,17 +354,32 @@ class UtmTemplate(_CamelModel):
 
 
 class Webhook(_CamelModel):
-    """A registered webhook endpoint."""
+    """A registered webhook endpoint.
+
+    Legacy webhook documents on the platform may omit every field but
+    ``id``/``url``/``events`` (no ``enabled``, ``secret``, etc.) — all other fields
+    stay ``Optional`` and default to ``None`` rather than a guessed default.
+    """
 
     id: Optional[str] = None
     url: Optional[str] = None
     events: List[str] = Field(default_factory=list)
     name: Optional[str] = None
+    # `repr=False` excludes this from BOTH __repr__ and __str__ — pydantic's default
+    # __str__ is backed by the same __repr_args__ machinery as __repr__, so this is
+    # enough to keep the secret out of str(webhook)/f"{webhook}"/print(webhook) too.
+    secret: Optional[str] = Field(default=None, repr=False)
     enabled: Optional[bool] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     last_triggered: Optional[str] = None
     failure_count: Optional[int] = None
+    success_count: Optional[int] = None
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__repr_str__(', ')})"  # type: ignore[misc]
+
+    __str__ = __repr__
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +421,7 @@ class CustomDomain(_CamelModel):
     is_default: Optional[bool] = None
     link_count: Optional[int] = None
     created_at: Optional[str] = None
+    default_redirect: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -523,3 +618,22 @@ class AggregateAnalytics(_CamelModel):
     hour_breakdown: Optional[List[HourClicks]] = None
     utm_breakdown: Optional[UTMBreakdown] = None
     upgrade_for_more: Optional[UpgradeForMore] = None
+
+
+# ---------------------------------------------------------------------------
+# Profile model — /api/user/profile
+# ---------------------------------------------------------------------------
+
+
+class Profile(_CamelModel):
+    """The authenticated user's account profile.
+
+    Distinct from :class:`MeResponse` (subscription tier/feature summary) and
+    :class:`UsageStats` (live consumption counters). Unknown fields returned by the
+    platform are preserved (``extra="allow"`` on the base model).
+    """
+
+    uid: Optional[str] = None
+    email: Optional[str] = None
+    display_name: Optional[str] = None
+    created_at: Optional[str] = None

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+import warnings
 from typing import Optional
 
 from ._async_http import AsyncHttpClient
 from ._http import HttpClient
+from ._transport import DEFAULT_MAX_RETRIES
 from .async_resources.affiliate import AsyncAffiliateResource
 from .async_resources.agentlink import AsyncAgentlinkResource
 from .async_resources.analytics import AsyncAnalyticsResource
@@ -17,6 +20,7 @@ from .async_resources.imports import AsyncImportsResource
 from .async_resources.links import AsyncLinksResource
 from .async_resources.me import AsyncMeResource
 from .async_resources.namespace import AsyncNamespaceResource
+from .async_resources.profile import AsyncProfileResource
 from .async_resources.qr import AsyncQRResource
 from .async_resources.saved_views import AsyncSavedViewsResource
 from .async_resources.tags import AsyncTagsResource
@@ -25,6 +29,7 @@ from .async_resources.usage import AsyncUsageResource
 from .async_resources.utm_templates import AsyncUtmTemplatesResource
 from .async_resources.web2app import AsyncWeb2AppResource
 from .async_resources.webhooks import AsyncWebhooksResource
+from .exceptions import AwsysConfigurationError
 from .resources.affiliate import AffiliateResource
 from .resources.agentlink import AgentlinkResource
 from .resources.analytics import AnalyticsResource
@@ -36,6 +41,7 @@ from .resources.imports import ImportsResource
 from .resources.links import LinksResource
 from .resources.me import MeResource
 from .resources.namespace import NamespaceResource
+from .resources.profile import ProfileResource
 from .resources.qr import QRResource
 from .resources.saved_views import SavedViewsResource
 from .resources.tags import TagsResource
@@ -46,6 +52,33 @@ from .resources.web2app import Web2AppResource
 from .resources.webhooks import WebhooksResource
 
 _DEFAULT_BASE_URL = "https://awsys.co"
+
+
+_warned_non_awsys_key = False
+
+
+def _resolve_api_key(api_key: Optional[str]) -> str:
+    global _warned_non_awsys_key
+    resolved = api_key if api_key is not None else os.environ.get("AWSYS_API_KEY")
+    if not resolved:
+        raise AwsysConfigurationError(
+            "No API key provided. Pass api_key=... or set the AWSYS_API_KEY "
+            "environment variable."
+        )
+    if not resolved.startswith("awsys_") and not _warned_non_awsys_key:
+        _warned_non_awsys_key = True
+        warnings.warn(
+            "This does not look like an AWSYS API key (expected it to start with "
+            "'awsys_').",
+            stacklevel=3,
+        )
+    return resolved
+
+
+def _resolve_base_url(base_url: Optional[str]) -> str:
+    if base_url is not None:
+        return base_url
+    return os.environ.get("AWSYS_BASE_URL", _DEFAULT_BASE_URL)
 
 
 class Client:
@@ -62,19 +95,33 @@ class Client:
         print(link.short_url)
 
     Args:
-        api_key: Your AWSYS API key (starts with ``awsys_``).
-        base_url: API base URL. Defaults to ``https://awsys.co``.
-        timeout: HTTP request timeout in seconds (default 30).
+        api_key: Your AWSYS API key (starts with ``awsys_``). Falls back to the
+            ``AWSYS_API_KEY`` environment variable; raises :class:`AwsysConfigurationError`
+            if neither is set.
+        base_url: API base URL. Falls back to the ``AWSYS_BASE_URL`` environment variable,
+            then ``https://awsys.co``. Must start with ``http://`` or ``https://``.
+        timeout: HTTP request timeout in seconds (default 30). Overridable per call via
+            each resource method's underlying transport.
+        max_retries: Maximum retry attempts for 429s and (for idempotent methods)
+            502/503/504/transport errors. ``0`` disables retries.
     """
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
         *,
-        base_url: str = _DEFAULT_BASE_URL,
+        base_url: Optional[str] = None,
         timeout: float = 30.0,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> None:
-        self._http = HttpClient(api_key=api_key, base_url=base_url, timeout=timeout)
+        resolved_key = _resolve_api_key(api_key)
+        resolved_url = _resolve_base_url(base_url)
+        self._http = HttpClient(
+            api_key=resolved_key,
+            base_url=resolved_url,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
 
         # Core resources
         self.links = LinksResource(self._http)
@@ -102,10 +149,14 @@ class Client:
         self.usage = UsageResource(self._http)
         self.web2app = Web2AppResource(self._http)
         self.imports = ImportsResource(self._http)
+        self.profile = ProfileResource(self._http)
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""
         self._http.close()
+
+    def __repr__(self) -> str:
+        return f"Client(base_url={self._http.base_url!r}, api_key={self._http.redacted_key!r})"
 
     def __enter__(self) -> "Client":
         return self
@@ -126,19 +177,32 @@ class AsyncClient:
             print(link.short_url)
 
     Args:
-        api_key: Your AWSYS API key (starts with ``awsys_``).
-        base_url: API base URL. Defaults to ``https://awsys.co``.
+        api_key: Your AWSYS API key (starts with ``awsys_``). Falls back to the
+            ``AWSYS_API_KEY`` environment variable; raises :class:`AwsysConfigurationError`
+            if neither is set.
+        base_url: API base URL. Falls back to the ``AWSYS_BASE_URL`` environment variable,
+            then ``https://awsys.co``. Must start with ``http://`` or ``https://``.
         timeout: HTTP request timeout in seconds (default 30).
+        max_retries: Maximum retry attempts for 429s and (for idempotent methods)
+            502/503/504/transport errors. ``0`` disables retries.
     """
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str] = None,
         *,
-        base_url: str = _DEFAULT_BASE_URL,
+        base_url: Optional[str] = None,
         timeout: float = 30.0,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> None:
-        self._http = AsyncHttpClient(api_key=api_key, base_url=base_url, timeout=timeout)
+        resolved_key = _resolve_api_key(api_key)
+        resolved_url = _resolve_base_url(base_url)
+        self._http = AsyncHttpClient(
+            api_key=resolved_key,
+            base_url=resolved_url,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
 
         # Core resources
         self.links = AsyncLinksResource(self._http)
@@ -166,10 +230,14 @@ class AsyncClient:
         self.usage = AsyncUsageResource(self._http)
         self.web2app = AsyncWeb2AppResource(self._http)
         self.imports = AsyncImportsResource(self._http)
+        self.profile = AsyncProfileResource(self._http)
 
     async def aclose(self) -> None:
         """Close the underlying async HTTP connection pool."""
         await self._http.aclose()
+
+    def __repr__(self) -> str:
+        return f"AsyncClient(base_url={self._http.base_url!r}, api_key={self._http.redacted_key!r})"
 
     async def __aenter__(self) -> "AsyncClient":
         return self

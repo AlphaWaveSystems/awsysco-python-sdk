@@ -1,6 +1,5 @@
 """Unit tests for the QR resource — no HTTP calls made."""
 
-import pytest
 
 from awsysco import Client
 
@@ -18,7 +17,7 @@ class TestQR:
         url = client.qr.get_url("abc123")
         assert "size=300" in url
         assert "color=000000" in url
-        assert "bgColor=FFFFFF" in url
+        assert "bgColor=ffffff" in url  # lowercase, matching the platform's own convention
 
     def test_get_url_custom_size(self, client: Client) -> None:
         url = client.qr.get_url("abc123", size=400)

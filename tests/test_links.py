@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from awsysco import Client, AwsysNotFoundError
-from awsysco.models import Link, LinkList
+from awsysco.models import GeoRestriction, Link, LinkList, OgMeta, RoutingRule
 from awsysco.resources.links import LinksResource
 
 
@@ -116,6 +116,88 @@ class TestLinksCreateUnit:
         assert "url" not in body
         assert "tags" not in body
         assert body["maxClicks"] == 50
+
+    def test_update_encodes_namespaced_short_path(self):
+        resource = _make_resource()
+        resource.update("acme/abc", max_clicks=50)
+        path = resource._http.patch.call_args[0][0]
+        assert path == "/api/v1/links/acme%2Fabc"
+
+    def test_create_accepts_typed_models(self):
+        resource = _make_resource()
+        resource.create(
+            "https://example.com",
+            routing_rules=[RoutingRule(country="US", redirect_url="https://us.example.com")],
+            og_meta=OgMeta(title="My Title"),
+            geo_restriction=GeoRestriction(allowed_countries=["US"]),
+        )
+        body = resource._http.post.call_args[1]["json"]
+        assert body["routingRules"] == [
+            {"country": "US", "redirectUrl": "https://us.example.com"}
+        ]
+        assert body["ogMeta"] == {"title": "My Title"}
+        assert body["geoRestriction"] == {"allowedCountries": ["US"]}
+
+    def test_create_still_accepts_plain_dicts(self):
+        resource = _make_resource()
+        resource.create(
+            "https://example.com",
+            og_meta={"title": "Dict Title"},
+        )
+        body = resource._http.post.call_args[1]["json"]
+        assert body["ogMeta"] == {"title": "Dict Title"}
+
+
+class TestLinksListAll:
+    def test_list_all_stops_on_has_more_false(self):
+        resource = _make_resource()
+        resource._http.get.side_effect = [
+            {"links": [_LINK_DATA, _LINK_DATA], "hasMore": True},
+            {"links": [_LINK_DATA], "hasMore": False},
+        ]
+        results = list(resource.list_all(limit=2))
+        assert len(results) == 3
+        assert resource._http.get.call_count == 2
+
+    def test_list_all_stops_on_short_page_without_has_more(self):
+        resource = _make_resource()
+        resource._http.get.side_effect = [
+            {"links": [_LINK_DATA, _LINK_DATA]},
+            {"links": [_LINK_DATA]},
+        ]
+        results = list(resource.list_all(limit=2))
+        assert len(results) == 3
+        assert resource._http.get.call_count == 2
+
+    def test_list_all_stops_on_empty_first_page(self):
+        resource = _make_resource()
+        resource._http.get.return_value = {"links": []}
+        results = list(resource.list_all(limit=20))
+        assert results == []
+        assert resource._http.get.call_count == 1
+
+    def test_list_all_clamps_limit_to_100(self):
+        resource = _make_resource()
+        resource._http.get.return_value = {"links": []}
+        list(resource.list_all(limit=500))
+        assert resource._http.get.call_args[1]["params"]["limit"] == 100
+
+    def test_list_all_clamps_zero_and_negative_limit(self):
+        """limit=0 (or negative) must clamp to >=1 and terminate — a bare
+        min(limit, 100) with no lower bound would send limit=0 to the platform,
+        and if a page ever came back non-empty, loop forever (`len(page.links) <
+        0` is never true, so the short-page stop condition could never fire)."""
+        resource = _make_resource()
+        resource._http.get.return_value = {"links": []}
+        results = list(resource.list_all(limit=0))
+        assert resource._http.get.call_args[1]["params"]["limit"] == 1
+        assert results == []
+        assert resource._http.get.call_count == 1  # terminates after one page
+
+        resource2 = _make_resource()
+        resource2._http.get.return_value = {"links": []}
+        list(resource2.list_all(limit=-5))
+        assert resource2._http.get.call_args[1]["params"]["limit"] == 1
 
 
 # ---------------------------------------------------------------------------

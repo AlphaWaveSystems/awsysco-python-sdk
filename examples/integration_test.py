@@ -12,12 +12,10 @@ from __future__ import annotations
 import os
 import time
 
-from awsysco import Client, AwsysError, AwsysNotFoundError
+from awsysco import Client, AwsysError
 from awsysco.models import (
-    AffiliateProgram,
     BulkResult,
     ClickEvent,
-    CustomDomain,
     Folder,
     FolderList,
     Link,

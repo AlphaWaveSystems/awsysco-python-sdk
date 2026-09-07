@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from .._http import HttpClient
 from ..models import AggregateAnalytics, ClickEvent, LinkStats
@@ -25,7 +25,7 @@ class AnalyticsResource:
         Returns:
             A LinkStats object with total_clicks and per-click breakdown.
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if period is not None:
             params["period"] = period
         data = self._http.get(
@@ -53,7 +53,7 @@ class AnalyticsResource:
         Returns:
             An AggregateAnalytics object.
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if period is not None:
             params["period"] = period
         data = self._http.get(
@@ -62,20 +62,29 @@ class AnalyticsResource:
         )
         return AggregateAnalytics.model_validate(data)
 
-    def get_recent_clicks(self, *, limit: Optional[int] = None) -> List[ClickEvent]:
+    def get_recent_clicks(
+        self, *, limit: Optional[int] = None, since: Optional[str] = None
+    ) -> List[ClickEvent]:
         """Get recent click events across all links for the authenticated user.
 
+        Requires the "Live Globe" feature flag to be enabled on the account — if it
+        isn't, the platform returns 403 with ``code="FEATURE_DISABLED"``, which surfaces
+        as :class:`~awsysco.exceptions.AwsysForbiddenError`.
+
         Args:
-            limit: Maximum number of click events to return.
+            limit: Maximum number of click events to return (platform max 50).
+            since: Only return clicks after this ISO-8601 timestamp.
 
         Returns:
             A list of ClickEvent objects.
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
+        if since is not None:
+            params["since"] = since
         data = self._http.get(
-            "/api/user/recent-clicks",
+            "/api/user/clicks/recent",
             params=params if params else None,
         )
         if isinstance(data, list):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
 from .._async_http import AsyncHttpClient
@@ -24,18 +24,17 @@ class AsyncImportsResource:
         provider: str,
         access_token: str,
         target_namespace: Optional[str] = None,
+        scope_filter: Optional[str] = None,
         scan_only: Optional[bool] = None,
     ) -> ImportJob:
-        """Start a new provider link-import job.
-
-        The request body uses snake_case keys (``provider``, ``access_token``,
-        optional ``target_namespace`` / ``scan_only``).
-        """
-        body = {"provider": provider, "access_token": access_token}
+        """Start a new provider link-import job."""
+        body: Dict[str, Any] = {"provider": provider, "accessToken": access_token}
         if target_namespace is not None:
-            body["target_namespace"] = target_namespace
+            body["targetNamespace"] = target_namespace
+        if scope_filter is not None:
+            body["scopeFilter"] = scope_filter
         if scan_only is not None:
-            body["scan_only"] = scan_only
+            body["scanOnly"] = scan_only
         data = await self._http.post("/api/v1/imports", json=body)
         return ImportJob.model_validate(data)
 
@@ -53,7 +52,7 @@ class AsyncImportsResource:
 
     async def list(self, *, limit: Optional[int] = None) -> List[ImportJob]:
         """List import jobs for the authenticated user."""
-        params = {}
+        params: Dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
         data = await self._http.get(
@@ -62,6 +61,16 @@ class AsyncImportsResource:
         )
         items = data.get("jobs", []) if isinstance(data, dict) else (data or [])
         return [ImportJob.model_validate(item) for item in items]
+
+    async def get_redirect_map_csv(self, job_id: str) -> str:
+        """Download the redirect map for a completed import job, as CSV."""
+        encoded = quote(job_id, safe="")
+        return await self._http.get_text(f"/api/v1/imports/{encoded}/redirect-map.csv")
+
+    async def get_redirect_map_json(self, job_id: str) -> Any:
+        """Download the redirect map for a completed import job, as JSON."""
+        encoded = quote(job_id, safe="")
+        return await self._http.get(f"/api/v1/imports/{encoded}/redirect-map.json")
 
     async def wait_for_completion(
         self,

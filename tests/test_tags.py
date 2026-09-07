@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 from awsysco.resources.tags import TagsResource
 
@@ -18,14 +17,15 @@ def _make_resource(return_value=None):
 
 class TestTagsAdd:
     def test_add_calls_correct_endpoint(self):
+        # Platform expects {"tags": [...]}, plural array — not {"tag": "..."}.
         resource = _make_resource()
         resource.add("abc123", "promo")
         resource._http.post.assert_called_once_with(
-            "/api/link/abc123/tags", json={"tag": "promo"}
+            "/api/link/abc123/tags", json={"tags": ["promo"]}
         )
 
     def test_add_returns_dict(self):
-        resource = _make_resource({"tag": "promo", "ok": True})
+        resource = _make_resource({"tags": ["promo"], "ok": True})
         result = resource.add("abc123", "promo")
         assert isinstance(result, dict)
 
@@ -33,7 +33,7 @@ class TestTagsAdd:
         resource = _make_resource()
         resource.add("ns/slug", "test")
         resource._http.post.assert_called_once_with(
-            "/api/link/ns%2Fslug/tags", json={"tag": "test"}
+            "/api/link/ns%2Fslug/tags", json={"tags": ["test"]}
         )
 
     def test_add_returns_empty_dict_on_none(self):

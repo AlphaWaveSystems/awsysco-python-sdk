@@ -14,7 +14,7 @@ class QRResource:
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
-        self._base_url = http._base_url
+        self._base_url = http.base_url
 
     def get_url(
         self,
@@ -22,7 +22,7 @@ class QRResource:
         *,
         size: int = 300,
         color: str = "000000",
-        bg_color: str = "FFFFFF",
+        bg_color: str = "ffffff",
     ) -> str:
         """Build the QR code image URL for a short code.
 

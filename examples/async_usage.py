@@ -9,7 +9,7 @@ Set AWSYS_API_KEY in your environment before running:
 import asyncio
 import os
 
-from awsysco import AsyncClient, AwsysNotFoundError
+from awsysco import AsyncClient
 
 api_key = os.environ.get("AWSYS_API_KEY")
 if not api_key:

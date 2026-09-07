@@ -29,7 +29,9 @@ class AsyncFoldersResource:
             body["name"] = name
         if color is not None:
             body["color"] = color
-        data = await self._http.patch(f"/api/v1/folders/{folder_id}", json=body)
+        # No /api/v1 alias exists for this route on the platform — only the
+        # unversioned path works (confirmed live: the v1 path 404s).
+        data = await self._http.patch(f"/api/folders/{folder_id}", json=body)
         return Folder.model_validate(data)
 
     async def delete(self, folder_id: str) -> None:

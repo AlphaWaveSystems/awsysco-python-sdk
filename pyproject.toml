@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "awsysco"
-version = "1.3.0"
+dynamic = ["version"]
 description = "Official Python SDK for the AWSYS.CO URL Shortener API"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -22,12 +22,13 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "httpx>=0.27",
-  "pydantic>=2.0",
+  "httpx>=0.27,<1",
+  "pydantic>=2.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +37,8 @@ dev = [
   "pytest-asyncio",
   "python-dotenv",
   "pytest-cov",
+  "ruff>=0.15,<1",
+  "mypy>=1.10,<2",
 ]
 
 [project.urls]
@@ -46,6 +49,38 @@ Repository = "https://github.com/AlphaWaveSystems/awsysco-python-sdk"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "integration: requires AWSYS_API_KEY and network access to a live/staging AWSYS API (auto-applied to any test using the `client` fixture; see conftest.py)",
+]
 
 [tool.coverage.run]
 source = ["awsysco"]
+
+[tool.hatch.version]
+# Single source of truth for the version: awsysco/_version.py. hatchling reads
+# the `__version__ = "..."` assignment from this file at build time, so there's
+# no second, manually-synced copy in this file to drift out of step.
+path = "awsysco/_version.py"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+# Pinned explicitly (rather than relying on ruff's "default" selection) so a ruff
+# version upgrade can't silently change what's enforced — e.g. 0.16 started
+# flagging import-sort (I001) issues under the bare default that 0.15 didn't.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+# Ideally this would match requires-python (3.9). It's pinned to 3.10 instead
+# because checking as 3.9 makes mypy follow into a transitive dependency's own
+# source (anyio) and fail on a match-statement there (3.10+ syntax) — a false
+# positive against our own code, not a real compatibility issue with 3.9 (the
+# CI matrix actually runs pytest against a real 3.9 interpreter, which is the
+# check that matters for runtime compatibility).
+python_version = "3.10"
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
