@@ -37,8 +37,8 @@ dev = [
   "pytest-asyncio",
   "python-dotenv",
   "pytest-cov",
-  "ruff",
-  "mypy",
+  "ruff>=0.15,<1",
+  "mypy>=1.10,<2",
 ]
 
 [project.urls]
@@ -59,6 +59,12 @@ source = ["awsysco"]
 [tool.ruff]
 target-version = "py39"
 line-length = 100
+
+[tool.ruff.lint]
+# Pinned explicitly (rather than relying on ruff's "default" selection) so a ruff
+# version upgrade can't silently change what's enforced — e.g. 0.16 started
+# flagging import-sort (I001) issues under the bare default that 0.15 didn't.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.mypy]
 python_version = "3.10"
