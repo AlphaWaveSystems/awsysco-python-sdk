@@ -16,7 +16,7 @@ _PROGRAM_DATA = {
     "commissionType": "cpc",
     "cpcRate": 0.5,
     "cpaRate": None,
-    "cookieDays": 30,
+    "cookieDurationDays": 30,
     "status": "active",
 }
 
@@ -80,7 +80,7 @@ class TestAffiliatePrograms:
         resource.update_program("prog1", cpc_rate=1.0, cookie_days=60)
         body = resource._http.patch.call_args[1]["json"]
         assert body["cpcRate"] == 1.0
-        assert body["cookieDays"] == 60
+        assert body["cookieDurationDays"] == 60
 
     def test_get_program_stats_calls_endpoint(self):
         resource = _make_resource()

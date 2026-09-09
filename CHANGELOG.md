@@ -94,6 +94,24 @@ changes — see below.
     have) — there's no wrong-alias risk for these three since nothing is
     dropped; upgrading them to typed models would change their return type
     (a breaking change) and was left out of scope for this fix.
+  - `AffiliateProgram` (ADR-024, a second re-audit round): `cookie_days`
+    (kept as the field/kwarg name for backward compatibility) now reads/writes
+    the correct wire key `cookieDurationDays`, not `cookieDays` — this was
+    wrong on both the request side (`create_program()`/`update_program()`) and
+    the response side. Added `merchant_id`, `max_partners`, `partner_count`,
+    `is_public`, `created_at`, `updated_at` (all present on the owned-program
+    endpoints; `discover()`'s public-summary response is a subset, which the
+    model already tolerates since every field is `Optional`).
+    `list_partners()`/`list_partnerships()`/`join()`/`get_partnership_stats()`
+    return raw dicts by design (same as the three above) — confirmed no change
+    needed; a typed `AffiliatePartnership` model is a 2.0 candidate. **Open
+    question sent to `awsys-orch`**: `create_program()`'s request body sends
+    `commissionType`/`cpcRate`/`cpaRate` (existing behavior, unchanged here) —
+    the platform-verified fixture's minimal create-request example shows a
+    single `commissionRate` field instead, which may indicate the request
+    shape itself is wrong too; left unchanged pending confirmation rather than
+    guessing at a restructure that could break working creates in a different
+    way.
 - **`utm_templates.list()`** read `utmTemplates` off `/api/v1/me`, a field the
   platform never actually populated — every call silently returned an empty
   list. The platform added a real `GET /api/user/utm-templates` route (#833);

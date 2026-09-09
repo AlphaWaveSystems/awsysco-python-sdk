@@ -14,7 +14,7 @@ class AsyncAffiliateResource:
 
     async def create_program(self, name: str, commission_type: str, **kwargs: Any) -> AffiliateProgram:
         body: Dict[str, Any] = {"name": name, "commissionType": commission_type}
-        field_map = {"description": "description", "cpc_rate": "cpcRate", "cpa_rate": "cpaRate", "cookie_days": "cookieDays"}
+        field_map = {"description": "description", "cpc_rate": "cpcRate", "cpa_rate": "cpaRate", "cookie_days": "cookieDurationDays"}
         for k, v in kwargs.items():
             body[field_map.get(k, k)] = v
         data = await self._http.post("/api/affiliate/programs", json=body)
@@ -33,7 +33,7 @@ class AsyncAffiliateResource:
 
     async def update_program(self, program_id: str, **kwargs: Any) -> AffiliateProgram:
         body: Dict[str, Any] = {}
-        field_map = {"cpc_rate": "cpcRate", "cpa_rate": "cpaRate", "cookie_days": "cookieDays", "commission_type": "commissionType"}
+        field_map = {"cpc_rate": "cpcRate", "cpa_rate": "cpaRate", "cookie_days": "cookieDurationDays", "commission_type": "commissionType"}
         for k, v in kwargs.items():
             body[field_map.get(k, k)] = v
         data = await self._http.patch(f"/api/affiliate/programs/{program_id}", json=body)

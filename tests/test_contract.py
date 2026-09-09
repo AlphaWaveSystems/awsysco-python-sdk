@@ -493,8 +493,15 @@ def _h_affiliate_programs_list(r, e):
 
 def _h_affiliate_program_get(r, e):
     _set_json(r.http, "get", e["response"]["body"])
-    r.affiliate.get_program("p1")
+    result = r.affiliate.get_program("p1")
     r.http.get.assert_called_once_with(e["request"]["path"])
+    body = e["response"]["body"]
+    assert result.merchant_id == body["merchantId"]
+    assert result.cookie_days == body["cookieDurationDays"]
+    assert result.max_partners == body["maxPartners"]
+    assert result.partner_count == body["partnerCount"]
+    assert result.is_public == body["isPublic"]
+    assert isinstance(result.created_at, str)  # coerced from Firestore {_seconds,...}
 
 
 def _h_affiliate_program_update(r, e):

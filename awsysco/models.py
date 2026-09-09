@@ -467,16 +467,32 @@ class CustomDomain(_CamelModel):
 
 
 class AffiliateProgram(_CamelModel):
-    """An affiliate program."""
+    """An affiliate program.
+
+    Shared between the owned-program endpoints (create/list/get/update — the
+    fully-populated shape) and ``discover()`` (a public subset: no
+    ``merchant_id``/``max_partners``/``is_public``/timestamps) — every field is
+    ``Optional`` so both shapes validate against the same model.
+
+    ``cookie_days`` is kept as a field name for backward compatibility even
+    though the wire key is ``cookieDurationDays``, not ``cookieDays`` (an
+    earlier version of this model guessed wrong).
+    """
 
     id: Optional[str] = None
+    merchant_id: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
     commission_type: Optional[str] = None
     cpc_rate: Optional[float] = None
     cpa_rate: Optional[float] = None
-    cookie_days: Optional[int] = None
+    cookie_days: Optional[int] = Field(default=None, alias="cookieDurationDays")
+    max_partners: Optional[int] = None
+    partner_count: Optional[int] = None
     status: Optional[str] = None
+    is_public: Optional[bool] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
