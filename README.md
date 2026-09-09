@@ -175,7 +175,7 @@ client.namespace.release()
 
 ```python
 client.utm_templates.create("Launch", "newsletter", "email", "sept")
-for t in client.utm_templates.list():   # derived from /api/v1/me — no dedicated list route
+for t in client.utm_templates.list():
     print(t.name)
 client.utm_templates.delete(t.id)
 ```

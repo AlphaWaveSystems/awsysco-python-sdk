@@ -337,19 +337,22 @@ def _h_view_delete(r, e):
     r.http.delete.assert_called_once_with(e["request"]["path"])
 
 
-def _h_utm_list_via_me(r, e):
+def _h_utm_list(r, e):
     _set_json(r.http, "get", e["response"]["body"])
     result = r.utm_templates.list()
-    r.http.get.assert_called_once_with("/api/v1/me")
-    assert len(result) == len(e["response"]["body"]["utmTemplates"])
+    r.http.get.assert_called_once_with("/api/user/utm-templates")
+    assert len(result) == len(e["response"]["body"]["templates"])
 
 
 def _h_utm_create(r, e):
     _set_json(r.http, "post", e["response"]["body"])
     body = e["request"]["body"]
-    r.utm_templates.create(body["name"], body["utmSource"], body["utmMedium"], body["utmCampaign"])
+    r.utm_templates.create(body["name"], body["source"], body["medium"], body["campaign"])
     called_body = r.http.post.call_args[1]["json"]
     assert called_body["name"] == body["name"]
+    assert called_body["source"] == body["source"]
+    assert called_body["medium"] == body["medium"]
+    assert called_body["campaign"] == body["campaign"]
 
 
 def _h_utm_delete(r, e):
@@ -668,7 +671,7 @@ CAPABILITY_HANDLERS = {
     "view_create": _h_view_create,
     "view_update": _h_view_update,
     "view_delete": _h_view_delete,
-    "utm_list_via_me": _h_utm_list_via_me,
+    "utm_list": _h_utm_list,
     "utm_create": _h_utm_create,
     "utm_delete": _h_utm_delete,
     "webhook_event_types": _h_webhook_event_types,

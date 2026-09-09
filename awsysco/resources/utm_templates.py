@@ -20,8 +20,8 @@ class UtmTemplatesResource:
         Returns:
             A list of UtmTemplate objects.
         """
-        resp = self._http.get("/api/v1/me")
-        items = resp.get("utmTemplates", []) if isinstance(resp, dict) else []
+        resp = self._http.get("/api/user/utm-templates")
+        items = resp.get("templates", []) if isinstance(resp, dict) else []
         return [UtmTemplate.model_validate(item) for item in items]
 
     def create(

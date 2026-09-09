@@ -1,6 +1,6 @@
 {
  "$schema": "awsys-sdk-contract/1",
- "version": "1.0.8",
+ "version": "1.0.10",
  "platformBaseline": "2026-09",
  "baseUrl": "https://awsys.co",
  "auth": {
@@ -835,26 +835,31 @@
    }
   },
   {
-   "id": "utm_list_via_me",
+   "id": "utm_list",
    "capability": "29",
    "request": {
     "method": "GET",
-    "path": "/api/v1/me",
+    "path": "/api/user/utm-templates",
     "query": {},
     "body": null
    },
    "response": {
     "status": 200,
     "body": {
-     "utmTemplates": [
+     "templates": [
       {
        "id": "t1",
-       "name": "Launch"
+       "name": "Launch",
+       "source": "newsletter",
+       "medium": "email",
+       "campaign": "sept",
+       "term": "",
+       "content": ""
       }
      ]
     }
    },
-   "note": "list derived from me.utmTemplates"
+   "note": "GET /api/user/utm-templates (apiKeyAuth) added in #833 \u2014 live on staging, pending prod deploy; returns {templates:[\u2026]}"
   },
   {
    "id": "utm_create",
@@ -865,18 +870,27 @@
     "query": {},
     "body": {
      "name": "Launch",
-     "utmSource": "newsletter",
-     "utmMedium": "email",
-     "utmCampaign": "sept"
+     "source": "newsletter",
+     "medium": "email",
+     "campaign": "sept"
     }
    },
    "response": {
     "status": 200,
     "body": {
-     "id": "t1",
-     "name": "Launch"
+     "success": true,
+     "template": {
+      "id": "t1",
+      "name": "Launch",
+      "source": "newsletter",
+      "medium": "email",
+      "campaign": "sept",
+      "term": "",
+      "content": ""
+     }
     }
-   }
+   },
+   "note": "platform reads source/medium/campaign/term/content (user.js:355); currently 500s (uuidv4 undefined, issue #831)"
   },
   {
    "id": "utm_delete",

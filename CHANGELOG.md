@@ -70,6 +70,13 @@ changes — see below.
   hierarchy, configuration, and async/retry/timeout behavior.
 
 ### Fixed
+- **`utm_templates.list()`** read `utmTemplates` off `/api/v1/me`, a field the
+  platform never actually populated — every call silently returned an empty
+  list. The platform added a real `GET /api/user/utm-templates` route (#833);
+  `list()` now calls it and reads its `templates` array. `create()` was already
+  sending the correct `source`/`medium`/`campaign` body fields — no change
+  needed there, the platform-side 500 that used to accompany it (#831) was a
+  server bug, not a client wire-format mismatch.
 - **`analytics.get_recent_clicks()`** called `/api/user/recent-clicks`, a path that
   never existed on the platform (always 404'd). Now calls `/api/user/clicks/recent`
   and supports a `since` parameter.
