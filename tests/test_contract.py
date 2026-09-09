@@ -124,7 +124,10 @@ def _h_create_link(r, e):
     _set_json(r.http, "post", e["response"]["body"])
     result = r.links.create(e["request"]["body"]["url"])
     r.http.post.assert_called_once_with("/api/v1/links", json=e["request"]["body"])
-    assert result.short_code == e["response"]["body"]["shortCode"]
+    body = e["response"]["body"]
+    assert result.short_code == body["shortCode"]
+    assert result.trust_status == body["trustStatus"]
+    assert result.threats == body["threats"]
 
 
 def _h_create_link_custom_slug(r, e):
@@ -198,7 +201,12 @@ def _h_aggregate_stats(r, e):
     short = e["request"]["path"].split("/")[4]
     result = r.analytics.get_aggregate_stats(short, period=e["request"]["query"]["period"])
     r.http.get.assert_called_once_with(e["request"]["path"], params=e["request"]["query"])
-    assert result.total_clicks == e["response"]["body"]["totalClicks"]
+    body = e["response"]["body"]
+    assert result.total_clicks == body["totalClicks"]
+    assert result.bot_clicks_excluded == body["botClicksExcluded"]
+    assert result.clicks_by_day[0].date == body["clicksByDay"][0]["date"]
+    assert result.country_breakdown == body["countryBreakdown"]
+    assert result.device_breakdown.desktop == body["deviceBreakdown"]["desktop"]
 
 
 def _h_bulk_create(r, e):
@@ -445,8 +453,12 @@ def _h_domain_check(r, e):
 
 def _h_namespace_get(r, e):
     _set_json(r.http, "get", e["response"]["body"])
-    r.namespace.get()
+    result = r.namespace.get()
     r.http.get.assert_called_once_with("/api/user/namespace")
+    body = e["response"]["body"]
+    assert result.can_claim_custom_domain == body["canClaimCustomDomain"]
+    assert result.can_claim_subdomain == body["canClaimSubdomain"]
+    assert result.namespace_data == body["namespaceData"]
 
 
 def _h_namespace_check(r, e):
@@ -634,7 +646,11 @@ def _h_trust_scan(r, e):
     _set_json(r.http, "get", e["response"]["body"])
     result = r.trust_score.scan("abc123")
     r.http.get.assert_called_once_with(e["request"]["path"])
-    assert result.score == e["response"]["body"]["trustScore"]
+    body = e["response"]["body"]
+    assert result.score == body["trustScore"]
+    assert result.short == body["short"]
+    assert result.source == body["source"]
+    assert isinstance(result.created_at, str)  # coerced from the raw epoch-ms int
 
 
 CAPABILITY_HANDLERS = {

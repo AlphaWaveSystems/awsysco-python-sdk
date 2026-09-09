@@ -70,6 +70,30 @@ changes — see below.
   hierarchy, configuration, and async/retry/timeout behavior.
 
 ### Fixed
+- **Several typed models had wrong or missing fields**, found via a platform
+  re-audit (ADR-022) of fixtures used to originally build them — `extra="allow"`
+  meant a wrong alias silently yielded `None` rather than erroring, so these
+  went undetected until verified against live staging response bodies:
+  - `TrustScoreResult`: added `source` and `created_at` (the latter arrives as
+    a raw epoch-milliseconds integer, not the Firestore `{_seconds,...}` shape
+    the shared coercion validator handles — given its own field-level
+    validator). `short` was already correct; an earlier pass had also added an
+    unused `short_code` field guessing the wire key was `shortCode` — kept for
+    backward compatibility but confirmed it's never actually populated.
+  - `NamespaceInfo`: added `can_claim_custom_domain`, `can_claim_subdomain`,
+    `namespace_data` (the real fields) — `upgrade_required` (kept for backward
+    compatibility) is never actually sent by the platform.
+  - `AggregateAnalytics`: added `bot_clicks_excluded` (was missing; every other
+    field — `clicks_by_day`, `country_breakdown`, `device_breakdown`, etc. —
+    was already correctly named).
+  - `Link`: added `geo_restriction`, `og_meta`, `is_custom`, `is_disabled`,
+    `disabled_reason`, `trust_score`, `trust_status`, `threats` — all present
+    on real responses but previously inaccessible except via `.model_extra`.
+  - `affiliate.get_limits()`, `custom_domains.add()`, and
+    `webhooks.list_event_types()` return raw, untyped dicts by design (always
+    have) — there's no wrong-alias risk for these three since nothing is
+    dropped; upgrading them to typed models would change their return type
+    (a breaking change) and was left out of scope for this fix.
 - **`utm_templates.list()`** read `utmTemplates` off `/api/v1/me`, a field the
   platform never actually populated — every call silently returned an empty
   list. The platform added a real `GET /api/user/utm-templates` route (#833);
