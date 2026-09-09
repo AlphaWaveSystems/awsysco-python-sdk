@@ -124,7 +124,10 @@ def _h_create_link(r, e):
     _set_json(r.http, "post", e["response"]["body"])
     result = r.links.create(e["request"]["body"]["url"])
     r.http.post.assert_called_once_with("/api/v1/links", json=e["request"]["body"])
-    assert result.short_code == e["response"]["body"]["shortCode"]
+    body = e["response"]["body"]
+    assert result.short_code == body["shortCode"]
+    assert result.trust_status == body["trustStatus"]
+    assert result.threats == body["threats"]
 
 
 def _h_create_link_custom_slug(r, e):
@@ -198,7 +201,12 @@ def _h_aggregate_stats(r, e):
     short = e["request"]["path"].split("/")[4]
     result = r.analytics.get_aggregate_stats(short, period=e["request"]["query"]["period"])
     r.http.get.assert_called_once_with(e["request"]["path"], params=e["request"]["query"])
-    assert result.total_clicks == e["response"]["body"]["totalClicks"]
+    body = e["response"]["body"]
+    assert result.total_clicks == body["totalClicks"]
+    assert result.bot_clicks_excluded == body["botClicksExcluded"]
+    assert result.clicks_by_day[0].date == body["clicksByDay"][0]["date"]
+    assert result.country_breakdown == body["countryBreakdown"]
+    assert result.device_breakdown.desktop == body["deviceBreakdown"]["desktop"]
 
 
 def _h_bulk_create(r, e):
@@ -337,19 +345,22 @@ def _h_view_delete(r, e):
     r.http.delete.assert_called_once_with(e["request"]["path"])
 
 
-def _h_utm_list_via_me(r, e):
+def _h_utm_list(r, e):
     _set_json(r.http, "get", e["response"]["body"])
     result = r.utm_templates.list()
-    r.http.get.assert_called_once_with("/api/v1/me")
-    assert len(result) == len(e["response"]["body"]["utmTemplates"])
+    r.http.get.assert_called_once_with("/api/user/utm-templates")
+    assert len(result) == len(e["response"]["body"]["templates"])
 
 
 def _h_utm_create(r, e):
     _set_json(r.http, "post", e["response"]["body"])
     body = e["request"]["body"]
-    r.utm_templates.create(body["name"], body["utmSource"], body["utmMedium"], body["utmCampaign"])
+    r.utm_templates.create(body["name"], body["source"], body["medium"], body["campaign"])
     called_body = r.http.post.call_args[1]["json"]
     assert called_body["name"] == body["name"]
+    assert called_body["source"] == body["source"]
+    assert called_body["medium"] == body["medium"]
+    assert called_body["campaign"] == body["campaign"]
 
 
 def _h_utm_delete(r, e):
@@ -442,8 +453,12 @@ def _h_domain_check(r, e):
 
 def _h_namespace_get(r, e):
     _set_json(r.http, "get", e["response"]["body"])
-    r.namespace.get()
+    result = r.namespace.get()
     r.http.get.assert_called_once_with("/api/user/namespace")
+    body = e["response"]["body"]
+    assert result.can_claim_custom_domain == body["canClaimCustomDomain"]
+    assert result.can_claim_subdomain == body["canClaimSubdomain"]
+    assert result.namespace_data == body["namespaceData"]
 
 
 def _h_namespace_check(r, e):
@@ -478,8 +493,15 @@ def _h_affiliate_programs_list(r, e):
 
 def _h_affiliate_program_get(r, e):
     _set_json(r.http, "get", e["response"]["body"])
-    r.affiliate.get_program("p1")
+    result = r.affiliate.get_program("p1")
     r.http.get.assert_called_once_with(e["request"]["path"])
+    body = e["response"]["body"]
+    assert result.merchant_id == body["merchantId"]
+    assert result.cookie_days == body["cookieDurationDays"]
+    assert result.max_partners == body["maxPartners"]
+    assert result.partner_count == body["partnerCount"]
+    assert result.is_public == body["isPublic"]
+    assert isinstance(result.created_at, str)  # coerced from Firestore {_seconds,...}
 
 
 def _h_affiliate_program_update(r, e):
@@ -631,7 +653,11 @@ def _h_trust_scan(r, e):
     _set_json(r.http, "get", e["response"]["body"])
     result = r.trust_score.scan("abc123")
     r.http.get.assert_called_once_with(e["request"]["path"])
-    assert result.score == e["response"]["body"]["trustScore"]
+    body = e["response"]["body"]
+    assert result.score == body["trustScore"]
+    assert result.short == body["short"]
+    assert result.source == body["source"]
+    assert isinstance(result.created_at, str)  # coerced from the raw epoch-ms int
 
 
 CAPABILITY_HANDLERS = {
@@ -668,7 +694,7 @@ CAPABILITY_HANDLERS = {
     "view_create": _h_view_create,
     "view_update": _h_view_update,
     "view_delete": _h_view_delete,
-    "utm_list_via_me": _h_utm_list_via_me,
+    "utm_list": _h_utm_list,
     "utm_create": _h_utm_create,
     "utm_delete": _h_utm_delete,
     "webhook_event_types": _h_webhook_event_types,

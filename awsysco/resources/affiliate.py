@@ -37,7 +37,7 @@ class AffiliateResource:
             "description": "description",
             "cpc_rate": "cpcRate",
             "cpa_rate": "cpaRate",
-            "cookie_days": "cookieDays",
+            "cookie_days": "cookieDurationDays",
         }
         for k, v in kwargs.items():
             mapped = field_map.get(k, k)
@@ -84,7 +84,7 @@ class AffiliateResource:
         field_map = {
             "cpc_rate": "cpcRate",
             "cpa_rate": "cpaRate",
-            "cookie_days": "cookieDays",
+            "cookie_days": "cookieDurationDays",
             "commission_type": "commissionType",
         }
         for k, v in kwargs.items():

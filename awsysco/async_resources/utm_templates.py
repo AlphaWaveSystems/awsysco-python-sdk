@@ -13,8 +13,8 @@ class AsyncUtmTemplatesResource:
         self._http = http
 
     async def list(self) -> List[UtmTemplate]:
-        resp = await self._http.get("/api/v1/me")
-        items = resp.get("utmTemplates", []) if isinstance(resp, dict) else []
+        resp = await self._http.get("/api/user/utm-templates")
+        items = resp.get("templates", []) if isinstance(resp, dict) else []
         return [UtmTemplate.model_validate(item) for item in items]
 
     async def create(self, name: str, source: str, medium: str, campaign: str, *, term: str = "", content: str = "") -> dict:

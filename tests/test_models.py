@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from awsysco.models import Folder, Link, LinkList
+from awsysco.models import AggregateAnalytics, Folder, Link, LinkList, NamespaceInfo, TrustScoreResult
 
 
 class TestTimestampCoercion:
@@ -105,3 +105,109 @@ class TestLinkListPagination:
     def test_missing_pagination_object_leaves_has_more_none(self):
         result = LinkList.model_validate({"links": []})
         assert result.has_more is None
+
+
+class TestPlatformVerifiedFieldMappings:
+    """Regression tests for ADR-022: an earlier round of models was built from
+    fixtures that turned out to be wrong about several response shapes. Each
+    test here validates through the TYPED field (not `.model_extra`), against
+    the exact shape platform-verified against live staging, so a future wrong
+    alias fails loudly instead of silently yielding None."""
+
+    def test_trust_score_result_real_shape(self):
+        result = TrustScoreResult.model_validate(
+            {
+                "short": "3iWwb7",
+                "trustScore": 88,
+                "trustStatus": "trusted",
+                "threats": [],
+                "scannedAt": "2026-09-09T10:38:23.189Z",
+                "source": "gsb+heuristics",
+                "createdAt": 1788950303155,  # epoch milliseconds, not Firestore-shaped
+            }
+        )
+        assert result.short == "3iWwb7"
+        assert result.score == 88
+        assert result.status == "trusted"
+        assert result.source == "gsb+heuristics"
+        assert result.scanned_at == "2026-09-09T10:38:23.189Z"
+        assert result.created_at == "2026-09-09T10:38:23.155000Z"
+
+    def test_namespace_info_real_shape(self):
+        result = NamespaceInfo.model_validate(
+            {
+                "hasAccess": True,
+                "namespace": "e2ens1780419603",
+                "namespaceData": {
+                    "userEmail": "test@example.com",
+                    "isActive": True,
+                    "tier": "builder",
+                    "userId": "abc123",
+                    "claimedAt": {"_seconds": 1780419604, "_nanoseconds": 47000000},
+                },
+                "tier": "builder",
+                "canClaimSubdomain": False,
+                "canClaimCustomDomain": True,
+            }
+        )
+        assert result.can_claim_custom_domain is True
+        assert result.can_claim_subdomain is False
+        assert result.namespace_data["userEmail"] == "test@example.com"
+        assert result.upgrade_required is None  # never sent by the platform
+
+    def test_aggregate_analytics_real_shape(self):
+        result = AggregateAnalytics.model_validate(
+            {
+                "shortCode": "abc123",
+                "period": "7d",
+                "totalClicks": 1,
+                "botClicksExcluded": 0,
+                "uniqueVisitors": 1,
+                "clicksByDay": [{"date": "2026-09-01", "clicks": 1}],
+                "countryBreakdown": {"MX": 1},
+                "deviceBreakdown": {"mobile": 0, "desktop": 1, "tablet": 0},
+                "browserBreakdown": {"Chrome": 1},
+                "osBreakdown": {"macOS": 1},
+                "hourBreakdown": [{"hour": 0, "clicks": 1}],
+                "tierLimit": 90,
+                "tier": "builder",
+            }
+        )
+        assert result.bot_clicks_excluded == 0
+        assert result.clicks_by_day[0].date == "2026-09-01"
+        assert result.country_breakdown == {"MX": 1}
+        assert result.device_breakdown.desktop == 1
+        assert result.hour_breakdown[0].hour == 0
+
+    def test_link_real_shape_from_create_response(self):
+        link = Link.model_validate(
+            {
+                "success": True,
+                "shortUrl": "https://awsys.co/abc123",
+                "shortCode": "abc123",
+                "long": "https://example.com/",
+                "expireFallbackUrl": None,
+                "trustScore": None,
+                "trustStatus": "pending",
+                "threats": [],
+            }
+        )
+        assert link.trust_status == "pending"
+        assert link.threats == []
+
+    def test_link_extended_fields_typed_not_extras(self):
+        link = Link.model_validate(
+            {
+                "id": "x",
+                "isCustom": True,
+                "isDisabled": True,
+                "disabledReason": "abuse",
+                "geoRestriction": {"allowedCountries": ["US"]},
+                "ogMeta": {"title": "Hi"},
+            }
+        )
+        assert link.is_custom is True
+        assert link.is_disabled is True
+        assert link.disabled_reason == "abuse"
+        assert link.geo_restriction.allowed_countries == ["US"]
+        assert link.og_meta.title == "Hi"

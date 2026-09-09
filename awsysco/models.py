@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -124,6 +124,14 @@ class Link(_CamelModel):
     max_clicks: Optional[int] = None
     expire_fallback_url: Optional[str] = None
     password_protected: Optional[bool] = None
+    geo_restriction: Optional["GeoRestriction"] = None
+    og_meta: Optional["OgMeta"] = None
+    is_custom: Optional[bool] = None
+    is_disabled: Optional[bool] = None
+    disabled_reason: Optional[str] = None
+    trust_score: Optional[float] = None
+    trust_status: Optional[str] = None
+    threats: Optional[List[str]] = None
 
 
 class LinkList(_CamelModel):
@@ -294,9 +302,11 @@ class QRSettings(_CamelModel):
 class TrustScoreResult(_CamelModel):
     """Result of a URL trust/safety scan.
 
-    Wire keys are ``shortCode``/``trustScore``/``trustStatus`` — ``short``/``long``
-    are kept as separate (currently unpopulated) fields since the platform doesn't
-    send them under those names; removing them would be a breaking change.
+    Wire keys are ``short``/``trustScore``/``trustStatus``/``scannedAt``/``source``/
+    ``createdAt`` (platform-verified against live staging). ``short_code`` is kept
+    as a separate (currently unpopulated) field for backward compatibility — an
+    earlier version of this model guessed the wire key was ``shortCode``, which
+    it isn't; removing the field would be a breaking change.
     """
 
     short: Optional[str] = None
@@ -306,6 +316,22 @@ class TrustScoreResult(_CamelModel):
     status: Optional[str] = Field(default=None, alias="trustStatus")
     threats: Optional[List[str]] = None
     scanned_at: Optional[str] = None
+    source: Optional[str] = None
+    created_at: Optional[str] = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _coerce_epoch_millis(cls, value: Any) -> Any:
+        # This endpoint's createdAt is a raw epoch-milliseconds integer, not the
+        # {_seconds,_nanoseconds} Firestore shape the shared base-model validator
+        # handles — normalize it the same way (to an ISO-8601 string) here.
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return value
+        try:
+            dt = datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+            return dt.isoformat().replace("+00:00", "Z")
+        except (OverflowError, OSError, ValueError):
+            return str(value)
 
 
 # ---------------------------------------------------------------------------
@@ -314,12 +340,23 @@ class TrustScoreResult(_CamelModel):
 
 
 class NamespaceInfo(_CamelModel):
-    """Namespace info for the authenticated user."""
+    """Namespace info for the authenticated user.
+
+    ``upgrade_required`` is kept for backward compatibility — the platform
+    doesn't actually send it (an earlier version of this model guessed it did);
+    ``can_claim_custom_domain``/``can_claim_subdomain``/``namespace_data`` are
+    the real, platform-verified fields. ``namespace_data`` is a loose dict
+    (account-internal shape, e.g. ``userEmail``/``isActive``/``tier``/``userId``/
+    ``claimedAt``) rather than its own typed model.
+    """
 
     has_access: Optional[bool] = None
     namespace: Optional[str] = None
     tier: Optional[str] = None
     upgrade_required: Optional[bool] = None
+    can_claim_custom_domain: Optional[bool] = None
+    can_claim_subdomain: Optional[bool] = None
+    namespace_data: Optional[Dict[str, Any]] = None
 
 
 class NamespaceCheckResult(_CamelModel):
@@ -430,16 +467,32 @@ class CustomDomain(_CamelModel):
 
 
 class AffiliateProgram(_CamelModel):
-    """An affiliate program."""
+    """An affiliate program.
+
+    Shared between the owned-program endpoints (create/list/get/update — the
+    fully-populated shape) and ``discover()`` (a public subset: no
+    ``merchant_id``/``max_partners``/``is_public``/timestamps) — every field is
+    ``Optional`` so both shapes validate against the same model.
+
+    ``cookie_days`` is kept as a field name for backward compatibility even
+    though the wire key is ``cookieDurationDays``, not ``cookieDays`` (an
+    earlier version of this model guessed wrong).
+    """
 
     id: Optional[str] = None
+    merchant_id: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
     commission_type: Optional[str] = None
     cpc_rate: Optional[float] = None
     cpa_rate: Optional[float] = None
-    cookie_days: Optional[int] = None
+    cookie_days: Optional[int] = Field(default=None, alias="cookieDurationDays")
+    max_partners: Optional[int] = None
+    partner_count: Optional[int] = None
     status: Optional[str] = None
+    is_public: Optional[bool] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -606,6 +659,7 @@ class AggregateAnalytics(_CamelModel):
     period: Optional[str] = None
     total_clicks: Optional[int] = None
     unique_visitors: Optional[int] = None
+    bot_clicks_excluded: Optional[int] = None
     clicks_by_day: List[DayClicks] = Field(default_factory=list)
     country_breakdown: Dict[str, int] = Field(default_factory=dict)
     tier_limit: Optional[int] = None
