@@ -47,8 +47,9 @@ class AnalyticsResource:
 
         Args:
             short_path: The short code or slug identifying the link.
-            period: Optional time period filter (e.g. ``'7d'``, ``'30d'``,
-                ``'all'``).
+            period: Optional time period filter (``'7d'`` default, ``'30d'``,
+                ``'90d'`` or ``'365d'``; the server clamps it to the plan's
+                analytics retention).
 
         Returns:
             An AggregateAnalytics object.
